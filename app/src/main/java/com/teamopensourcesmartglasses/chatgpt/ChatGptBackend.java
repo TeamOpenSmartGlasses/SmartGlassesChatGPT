@@ -29,8 +29,6 @@ public class ChatGptBackend {
         service = new OpenAiService(token);
     }
 
-
-
     public void sendChat(String message){
         // Just an example of how this would work (pulled mostly from openai-java library example)...:
         // 1. Send message to ChatGPT
@@ -41,9 +39,11 @@ public class ChatGptBackend {
         class DoGptStuff implements Runnable {
             public void run(){
                 Log.d(TAG, "Doing gpt stuff");
+                ChatMessage newUserMessage = new ChatMessage(ChatMessageRole.USER.value(), message);
                 final List<ChatMessage> messages = new ArrayList<>();
                 final ChatMessage systemMessage = new ChatMessage(ChatMessageRole.SYSTEM.value(), "You are a dog and will speak as such.");
                 messages.add(systemMessage);
+                messages.add(newUserMessage);
 
                 ChatCompletionRequest chatCompletionRequest = ChatCompletionRequest.builder()
                         .model("gpt-3.5-turbo")
