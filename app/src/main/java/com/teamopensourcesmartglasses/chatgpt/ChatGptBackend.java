@@ -3,6 +3,7 @@ package com.teamopensourcesmartglasses.chatgpt;
 import android.os.AsyncTask;
 import android.util.Log;
 
+import com.teamopensourcesmartglasses.chatgpt.events.ChatReceivedEvent;
 import com.theokanning.openai.completion.chat.ChatCompletionChoice;
 import com.theokanning.openai.completion.chat.ChatCompletionRequest;
 import com.theokanning.openai.completion.chat.ChatMessage;
@@ -14,6 +15,8 @@ import com.theokanning.openai.completion.chat.ChatCompletionRequest;
 import com.theokanning.openai.completion.chat.ChatMessage;
 import com.theokanning.openai.completion.chat.ChatMessageRole;
 
+import org.greenrobot.eventbus.EventBus;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -21,12 +24,14 @@ import java.util.stream.Collectors;
 
 public class ChatGptBackend {
     final String TAG = "SmartGlassesChatGpt_ChatGptBackend";
-    private String token;
-    private OpenAiService service;
+    private final OpenAiService service;
     public ChatGptBackend(){
-        token = System.getenv("OPENAI_TOKEN");
-        token = "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";
+        String token = System.getenv("OPENAI_TOKEN");
+        if (token == null)
+            token = "";
         service = new OpenAiService(token);
+
+        EventBus.getDefault().register(this);
     }
 
     public void sendChat(String message){
@@ -38,7 +43,7 @@ public class ChatGptBackend {
 
         class DoGptStuff implements Runnable {
             public void run(){
-                Log.d(TAG, "Doing gpt stuff");
+                Log.d(TAG, "Doing gpt stuff, got message " + message);
                 ChatMessage newUserMessage = new ChatMessage(ChatMessageRole.USER.value(), message);
                 final List<ChatMessage> messages = new ArrayList<>();
                 final ChatMessage systemMessage = new ChatMessage(ChatMessageRole.SYSTEM.value(), "You are a dog and will speak as such.");
@@ -51,19 +56,17 @@ public class ChatGptBackend {
                         .n(5)
                         .build();
 
-                List<ChatMessage> responses = null;
-
                 try {
                     Log.d(TAG, "trying chatgpt stuff");
-                    responses = service.createChatCompletion(chatCompletionRequest)
+                    List<ChatMessage> responses = service.createChatCompletion(chatCompletionRequest)
                             .getChoices()
                             .stream()
                             .map(ChatCompletionChoice::getMessage)
                             .collect(Collectors.toList());
 
                     Log.d(TAG, responses.toString());
-
-                    //TODO: find best response, emit an event to the ChatGptService
+                    // Send an chat received response
+                    EventBus.getDefault().post(new ChatReceivedEvent(responses.get(0).toString()));
                 } catch (Exception e){
                     Log.d(TAG, e.getMessage());
                 }

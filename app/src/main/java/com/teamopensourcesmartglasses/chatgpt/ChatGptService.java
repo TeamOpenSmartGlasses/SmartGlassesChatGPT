@@ -6,9 +6,13 @@ import com.teamopensmartglasses.sgmlib.DataStreamType;
 import com.teamopensmartglasses.sgmlib.SGMCommand;
 import com.teamopensmartglasses.sgmlib.SGMLib;
 import com.teamopensmartglasses.sgmlib.SmartGlassesAndroidService;
+import com.teamopensourcesmartglasses.chatgpt.events.ChatReceivedEvent;
 
 import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
 
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.UUID;
 
 public class ChatGptService extends SmartGlassesAndroidService {
@@ -18,6 +22,10 @@ public class ChatGptService extends SmartGlassesAndroidService {
 
     //our instance of the SGM library
     public SGMLib sgmLib;
+
+    public StringBuffer messageBuffer = new StringBuffer();
+    public final int DELAY_MS = 9000; // 9 seconds
+    public final Timer timer = new Timer();
 
     public ChatGptService(){
         super(MainActivity.class,
@@ -41,7 +49,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
 
         //Define list of phrases to be used to trigger the command
         //currently just "Chat" as I don't know how our ASR would interpret "CHAT GEE-PEE-TEE"
-        String[] triggerPhrases = new String[]{"Chat"};
+        String[] triggerPhrases = new String[]{"Start chat session"};
 
         //Create command object
         SGMCommand command = new SGMCommand(appName, commandUUID, triggerPhrases, "ChatGPT for your smart glasses!");
@@ -69,6 +77,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
     public void onDestroy() {
         Log.d(TAG, "onDestroy called");
         EventBus.getDefault().unregister(this);
+        stopTimer();
         super.onDestroy();
     }
 
@@ -79,10 +88,41 @@ public class ChatGptService extends SmartGlassesAndroidService {
     public void processTranscriptionCallback(String transcript, long timestamp, boolean isFinal){
         Log.d(TAG, "Received transcription from SGM");
 
-        // Just an example of what you might want to do here...
+        // We want to send our message in our message buffer when we stop speaking for like 9 seconds
+        // If the transcript is finalized, then we add it to our buffer, and reset our timer
         if(isFinal){
-            chatGptBackend.sendChat(transcript);
+            messageBuffer.append(transcript);
+            messageBuffer.append(" ");
+            resetTimer();
         }
     }
 
+    private void startTimer() {
+        // If the timer completes, then we send the transcript and clear our buffer
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                String message = messageBuffer.toString().trim();
+                if (!message.isEmpty()) {
+                    chatGptBackend.sendChat(message);
+                    Log.d(TAG, "run: message is not empty, sent message" + message);
+                    messageBuffer = new StringBuffer();
+                }
+            }
+        }, DELAY_MS);
+    }
+
+    private void stopTimer() {
+        timer.cancel();
+    }
+
+    private void resetTimer() {
+        timer.cancel();
+        startTimer();
+    }
+
+    @Subscribe
+    public void onChatReceived(ChatReceivedEvent event) {
+        sgmLib.sendReferenceCard("Chat Response", event.message);
+    }
 }
