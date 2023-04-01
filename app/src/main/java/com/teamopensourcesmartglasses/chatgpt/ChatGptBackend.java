@@ -30,7 +30,7 @@ public class ChatGptBackend {
         EventBus.getDefault().register(this);
 
         // ChatGPT config
-        String token = "<YOUR TOKEN HERE>";
+        String token = "";
         service = new OpenAiService(token);
         messages.add(systemMessage);
     }
@@ -45,11 +45,14 @@ public class ChatGptBackend {
         class DoGptStuff implements Runnable {
             public void run(){
                 Log.d(TAG, "Doing gpt stuff, got message " + message);
-                ChatMessage newUserMessage = new ChatMessage(ChatMessageRole.USER.value(), message);
-                messages.add(newUserMessage);
+                messages.add(new ChatMessage(ChatMessageRole.USER.value(), message));
 
-                Log.d(TAG, "User message: " + newUserMessage);
+                Log.d(TAG, "New Message Stack: ");
+                for (ChatMessage message : messages) {
+                    Log.d(TAG, message.getRole() + ": " + message.getContent());
+                }
 
+                // Todo: Change completions to streams
                 ChatCompletionRequest chatCompletionRequest = ChatCompletionRequest.builder()
                         .model("gpt-3.5-turbo")
                         .messages(messages)
@@ -57,7 +60,7 @@ public class ChatGptBackend {
                         .build();
 
                 try {
-                    Log.d(TAG, "trying chatgpt stuff");
+                    Log.d(TAG, "Running ChatGpt completions request");
                     List<ChatMessage> responses = service.createChatCompletion(chatCompletionRequest)
                             .getChoices()
                             .stream()
@@ -65,12 +68,13 @@ public class ChatGptBackend {
                             .collect(Collectors.toList());
 
                     // Send an chat received response
-                    String response = responses.get(0).toString();
-                    EventBus.getDefault().post(new ChatReceivedEvent(response));
+                    ChatMessage response = responses.get(0);
+                    EventBus.getDefault().post(new ChatReceivedEvent(response.getContent()));
                     // Add back to chat
-                    messages.add(new ChatMessage(ChatMessageRole.ASSISTANT.value(), response));
+                    messages.add(response);
                 } catch (Exception e){
                     Log.d(TAG, e.getMessage());
+                    e.printStackTrace();
                 }
             }
         }
