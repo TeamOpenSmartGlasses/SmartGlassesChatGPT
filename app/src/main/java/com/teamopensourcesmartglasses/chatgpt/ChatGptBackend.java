@@ -1,10 +1,8 @@
 package com.teamopensourcesmartglasses.chatgpt;
 
-import android.os.AsyncTask;
 import android.util.Log;
 
 import com.teamopensourcesmartglasses.chatgpt.events.ChatReceivedEvent;
-import com.teamopensourcesmartglasses.chatgpt.events.ClearMessagesEvent;
 import com.teamopensourcesmartglasses.chatgpt.events.OpenAIApiKeyProvidedEvent;
 import com.theokanning.openai.completion.chat.ChatCompletionChoice;
 import com.theokanning.openai.completion.chat.ChatCompletionRequest;
@@ -15,6 +13,7 @@ import com.theokanning.openai.service.OpenAiService;
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -24,14 +23,14 @@ public class ChatGptBackend {
     private final OpenAiService service;
     private String openAiApiKey;
     private final List<ChatMessage> messages = new ArrayList<>();
-    private final ChatMessage systemMessage = new ChatMessage(ChatMessageRole.SYSTEM.value(), "You are a dog and will speak as such.");
 
     public ChatGptBackend(){
         EventBus.getDefault().register(this);
 
         // ChatGPT config
         String token = "";
-        service = new OpenAiService(token);
+        service = new OpenAiService(token, Duration.ofSeconds(60));
+        final ChatMessage systemMessage = new ChatMessage(ChatMessageRole.SYSTEM.value(), "You are a dog and will speak as such.");
         messages.add(systemMessage);
     }
 
@@ -74,6 +73,7 @@ public class ChatGptBackend {
                     messages.add(response);
                 } catch (Exception e){
                     Log.d(TAG, e.getMessage());
+                    EventBus.getDefault().post(new ChatReceivedEvent("Something is wrong with openAI service"));
                     e.printStackTrace();
                 }
             }
@@ -85,12 +85,5 @@ public class ChatGptBackend {
     public void onOpenAIApiKeyProvided(OpenAIApiKeyProvidedEvent event) {
         // A feature for users to input their own key
         openAiApiKey = event.token;
-    }
-
-    @Subscribe
-    public void onClearMessages(ClearMessagesEvent event) {
-        Log.d(TAG, "Clearing chat context");
-        messages.clear();
-        messages.add(systemMessage);
     }
 }

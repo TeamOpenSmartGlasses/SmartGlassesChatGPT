@@ -7,13 +7,15 @@ import com.teamopensmartglasses.sgmlib.SGMCommand;
 import com.teamopensmartglasses.sgmlib.SGMLib;
 import com.teamopensmartglasses.sgmlib.SmartGlassesAndroidService;
 import com.teamopensourcesmartglasses.chatgpt.events.ChatReceivedEvent;
-import com.teamopensourcesmartglasses.chatgpt.events.ClearMessagesEvent;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 
-import java.util.Timer;
 import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class ChatGptService extends SmartGlassesAndroidService {
     public final String TAG = "SmartGlassesChatGpt_ChatGptService";
@@ -24,11 +26,11 @@ public class ChatGptService extends SmartGlassesAndroidService {
     public SGMLib sgmLib;
 
     public StringBuffer messageBuffer = new StringBuffer();
-    public final int DELAY_MS = 9000; // 9 seconds
-    public final Timer timer = new Timer();
     private boolean newScreen = true;
     private boolean userTurnLabelSet = false;
-    private int transcriptCounter = 0;
+    private final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+    private Future<?> future;
+
     // Todo: make this app only usable if key is provided
 
     public ChatGptService(){
@@ -106,45 +108,26 @@ public class ChatGptService extends SmartGlassesAndroidService {
                 userTurnLabelSet = true;
             }
             sgmLib.pushScrollingText(transcript);
-
-            // Send transcript every 4 messages
-            transcriptCounter += 1;
-            // Todo: make this use a timer
-            if (transcriptCounter % 4 == 0) {
-                chatGptBackend.sendChat(messageBuffer.toString());
-                messageBuffer = new StringBuffer();
-                Log.d(TAG, "Sent a message to chatgpt backend");
+            
+            // Cancel the scheduled job if we get a new transcript
+            if (future != null) {
+                future.cancel(false);
+                Log.d(TAG, "processTranscriptionCallback: Cancelled scheduled job");
             }
 
-            // resetTimer();
+            future = executorService.schedule(() -> {
+                String message = messageBuffer.toString();
+                
+                if (!message.isEmpty()) {
+                    chatGptBackend.sendChat(messageBuffer.toString());
+                    messageBuffer = new StringBuffer();
+                    Log.d(TAG, "Ran scheduled job and sent message");
+                } else {
+                    Log.d(TAG, "Message is empty");
+                }
+            }, 5, TimeUnit.SECONDS);
         }
     }
-
-//    private void startTimer() {
-//        // If the timer completes, then we send the transcript and clear our buffer
-//        timer.schedule(new TimerTask() {
-//            @Override
-//            public void run() {
-//                String message = messageBuffer.toString().trim();
-//                if (!message.isEmpty()) {
-//                    // chatGptBackend.sendChat(message);
-//                    sgmLib.sendReferenceCard("Prompt", message);
-//                    Log.d(TAG, "run: message is not empty, sent message" + message);
-//                    messageBuffer = new StringBuffer();
-//                }
-//            }
-//        }, DELAY_MS);
-//    }
-
-//    private void stopTimer() {
-//        timer.cancel();
-//    }
-//
-//    private void resetTimer() {
-//        timer.cancel();
-//        startTimer();
-//        Log.d(TAG, "Timer reseted");
-//    }
 
     @Subscribe
     public void onChatReceived(ChatReceivedEvent event) {
