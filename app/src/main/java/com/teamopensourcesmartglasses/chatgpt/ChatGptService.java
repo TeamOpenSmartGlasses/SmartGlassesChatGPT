@@ -6,9 +6,13 @@ import com.teamopensmartglasses.sgmlib.DataStreamType;
 import com.teamopensmartglasses.sgmlib.SGMCommand;
 import com.teamopensmartglasses.sgmlib.SGMLib;
 import com.teamopensmartglasses.sgmlib.SmartGlassesAndroidService;
+import com.teamopensourcesmartglasses.chatgpt.events.ChatReceivedEvent;
+import com.teamopensourcesmartglasses.chatgpt.events.ClearMessagesEvent;
 
 import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
 
+import java.util.Timer;
 import java.util.UUID;
 
 public class ChatGptService extends SmartGlassesAndroidService {
@@ -18,6 +22,14 @@ public class ChatGptService extends SmartGlassesAndroidService {
 
     //our instance of the SGM library
     public SGMLib sgmLib;
+
+    public StringBuffer messageBuffer = new StringBuffer();
+    public final int DELAY_MS = 9000; // 9 seconds
+    public final Timer timer = new Timer();
+    private boolean newScreen = true;
+    private boolean userTurnLabelSet = false;
+    private int transcriptCounter = 0;
+    // Todo: make this app only usable if key is provided
 
     public ChatGptService(){
         super(MainActivity.class,
@@ -33,21 +45,21 @@ public class ChatGptService extends SmartGlassesAndroidService {
 
         /* Handle SGMLib specific things */
 
-        //Create SGMLib instance with context: this
+        // Create SGMLib instance with context: this
         sgmLib = new SGMLib(this);
 
-        //Define command with a UUID
-        UUID commandUUID = UUID.fromString("c3b5bbfd-4416-4006-8b40-73486ac37aec");
+        // Define commands
+        // Each command has a UUID, trigger phrases and description
+        UUID startChatCommandUUID = UUID.fromString("c3b5bbfd-4416-4006-8b40-12346ac37aec");
 
-        //Define list of phrases to be used to trigger the command
-        //currently just "Chat" as I don't know how our ASR would interpret "CHAT GEE-PEE-TEE"
-        String[] triggerPhrases = new String[]{"Chat"};
+        // Define list of phrases to be used to trigger each command
+        String[] startChatTriggerPhrases = new String[] { "Start chat session", "Launch chat", "Let's talk", "Hi Michael" };
 
-        //Create command object
-        SGMCommand command = new SGMCommand(appName, commandUUID, triggerPhrases, "ChatGPT for your smart glasses!");
+        //Create command objects
+        SGMCommand startChatCommand = new SGMCommand(appName, startChatCommandUUID, startChatTriggerPhrases, "Start a ChatGPT session for your smart glasses!");
 
         //Register the command
-        sgmLib.registerCommand(command, this::chatGptCommandCallback);
+        sgmLib.registerCommand(startChatCommand, this::startChatCommandCallback);
 
         //Subscribe to transcription stream
         sgmLib.subscribe(DataStreamType.TRANSCRIPTION_ENGLISH_STREAM, this::processTranscriptionCallback);
@@ -55,14 +67,10 @@ public class ChatGptService extends SmartGlassesAndroidService {
         Log.d(TAG, "CHATGPT SERVICE STARTED");
 
         /* Handle SmartGlassesChatGPT specific things */
-
         EventBus.getDefault().register(this);
-
         chatGptBackend = new ChatGptBackend();
 
-        chatGptBackend.sendChat("blah");
-
-        Log.d(TAG, "SERVO START");
+        // startTimer();
     }
 
     @Override
@@ -72,17 +80,76 @@ public class ChatGptService extends SmartGlassesAndroidService {
         super.onDestroy();
     }
 
-    public void chatGptCommandCallback(String args, long commandTriggeredTime) {
-        Log.d(TAG,"ChatGPT command callback called");
+    public void startChatCommandCallback(String args, long commandTriggeredTime) {
+        Log.d(TAG,"Start ChatGPT command callback called");
+
+        if (newScreen) {
+            newScreen = false;
+            sgmLib.startScrollingText("Input prompt");
+            Log.d(TAG, "Added a scrolling text view");
+        }
+
+        messageBuffer = new StringBuffer();
+        sgmLib.pushScrollingText(">>> Conversation started");
     }
 
     public void processTranscriptionCallback(String transcript, long timestamp, boolean isFinal){
-        Log.d(TAG, "Received transcription from SGM");
+        // We want to send our message in our message buffer when we stop speaking for like 9 seconds
+        // If the transcript is finalized, then we add it to our buffer, and reset our timer
+        if(!newScreen && isFinal){
+            Log.d(TAG, messageBuffer.toString());
+            messageBuffer.append(transcript);
+            messageBuffer.append(" ");
 
-        // Just an example of what you might want to do here...
-        if(isFinal){
-            chatGptBackend.sendChat(transcript);
+            if (!userTurnLabelSet) {
+                sgmLib.pushScrollingText(">>> User says:");
+                userTurnLabelSet = true;
+            }
+            sgmLib.pushScrollingText(transcript);
+
+            // Send transcript every 4 messages
+            transcriptCounter += 1;
+            // Todo: make this use a timer
+            if (transcriptCounter % 4 == 0) {
+                chatGptBackend.sendChat(messageBuffer.toString());
+                messageBuffer = new StringBuffer();
+                Log.d(TAG, "Sent a message to chatgpt backend");
+            }
+
+            // resetTimer();
         }
     }
 
+//    private void startTimer() {
+//        // If the timer completes, then we send the transcript and clear our buffer
+//        timer.schedule(new TimerTask() {
+//            @Override
+//            public void run() {
+//                String message = messageBuffer.toString().trim();
+//                if (!message.isEmpty()) {
+//                    // chatGptBackend.sendChat(message);
+//                    sgmLib.sendReferenceCard("Prompt", message);
+//                    Log.d(TAG, "run: message is not empty, sent message" + message);
+//                    messageBuffer = new StringBuffer();
+//                }
+//            }
+//        }, DELAY_MS);
+//    }
+
+//    private void stopTimer() {
+//        timer.cancel();
+//    }
+//
+//    private void resetTimer() {
+//        timer.cancel();
+//        startTimer();
+//        Log.d(TAG, "Timer reseted");
+//    }
+
+    @Subscribe
+    public void onChatReceived(ChatReceivedEvent event) {
+        sgmLib.pushScrollingText(">>> ChatGpt Response:");
+        sgmLib.pushScrollingText(event.message);
+        userTurnLabelSet = false;
+    }
 }

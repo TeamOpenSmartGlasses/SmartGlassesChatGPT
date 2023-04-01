@@ -3,30 +3,36 @@ package com.teamopensourcesmartglasses.chatgpt;
 import android.os.AsyncTask;
 import android.util.Log;
 
+import com.teamopensourcesmartglasses.chatgpt.events.ChatReceivedEvent;
+import com.teamopensourcesmartglasses.chatgpt.events.ClearMessagesEvent;
+import com.teamopensourcesmartglasses.chatgpt.events.OpenAIApiKeyProvidedEvent;
 import com.theokanning.openai.completion.chat.ChatCompletionChoice;
 import com.theokanning.openai.completion.chat.ChatCompletionRequest;
 import com.theokanning.openai.completion.chat.ChatMessage;
 import com.theokanning.openai.completion.chat.ChatMessageRole;
 import com.theokanning.openai.service.OpenAiService;
 
-import com.theokanning.openai.completion.CompletionRequest;
-import com.theokanning.openai.completion.chat.ChatCompletionRequest;
-import com.theokanning.openai.completion.chat.ChatMessage;
-import com.theokanning.openai.completion.chat.ChatMessageRole;
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class ChatGptBackend {
     final String TAG = "SmartGlassesChatGpt_ChatGptBackend";
-    private String token;
-    private OpenAiService service;
+    private final OpenAiService service;
+    private String openAiApiKey;
+    private final List<ChatMessage> messages = new ArrayList<>();
+    private final ChatMessage systemMessage = new ChatMessage(ChatMessageRole.SYSTEM.value(), "You are a dog and will speak as such.");
+
     public ChatGptBackend(){
-        token = System.getenv("OPENAI_TOKEN");
-        token = "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";
+        EventBus.getDefault().register(this);
+
+        // ChatGPT config
+        String token = "";
         service = new OpenAiService(token);
+        messages.add(systemMessage);
     }
 
     public void sendChat(String message){
@@ -38,37 +44,53 @@ public class ChatGptBackend {
 
         class DoGptStuff implements Runnable {
             public void run(){
-                Log.d(TAG, "Doing gpt stuff");
-                ChatMessage newUserMessage = new ChatMessage(ChatMessageRole.USER.value(), message);
-                final List<ChatMessage> messages = new ArrayList<>();
-                final ChatMessage systemMessage = new ChatMessage(ChatMessageRole.SYSTEM.value(), "You are a dog and will speak as such.");
-                messages.add(systemMessage);
-                messages.add(newUserMessage);
+                Log.d(TAG, "Doing gpt stuff, got message " + message);
+                messages.add(new ChatMessage(ChatMessageRole.USER.value(), message));
 
+                Log.d(TAG, "New Message Stack: ");
+                for (ChatMessage message : messages) {
+                    Log.d(TAG, message.getRole() + ": " + message.getContent());
+                }
+
+                // Todo: Change completions to streams
                 ChatCompletionRequest chatCompletionRequest = ChatCompletionRequest.builder()
                         .model("gpt-3.5-turbo")
                         .messages(messages)
-                        .n(5)
+                        .n(1)
                         .build();
 
-                List<ChatMessage> responses = null;
-
                 try {
-                    Log.d(TAG, "trying chatgpt stuff");
-                    responses = service.createChatCompletion(chatCompletionRequest)
+                    Log.d(TAG, "Running ChatGpt completions request");
+                    List<ChatMessage> responses = service.createChatCompletion(chatCompletionRequest)
                             .getChoices()
                             .stream()
                             .map(ChatCompletionChoice::getMessage)
                             .collect(Collectors.toList());
 
-                    Log.d(TAG, responses.toString());
-
-                    //TODO: find best response, emit an event to the ChatGptService
+                    // Send an chat received response
+                    ChatMessage response = responses.get(0);
+                    EventBus.getDefault().post(new ChatReceivedEvent(response.getContent()));
+                    // Add back to chat
+                    messages.add(response);
                 } catch (Exception e){
                     Log.d(TAG, e.getMessage());
+                    e.printStackTrace();
                 }
             }
         }
         new Thread(new DoGptStuff()).start();
+    }
+
+    @Subscribe
+    public void onOpenAIApiKeyProvided(OpenAIApiKeyProvidedEvent event) {
+        // A feature for users to input their own key
+        openAiApiKey = event.token;
+    }
+
+    @Subscribe
+    public void onClearMessages(ClearMessagesEvent event) {
+        Log.d(TAG, "Clearing chat context");
+        messages.clear();
+        messages.add(systemMessage);
     }
 }
