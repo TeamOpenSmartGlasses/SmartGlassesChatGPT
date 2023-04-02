@@ -108,7 +108,9 @@ public class ChatGptService extends SmartGlassesAndroidService {
                 userTurnLabelSet = true;
             }
             sgmLib.pushScrollingText(transcript);
-            
+
+            if (newScreen) return;
+
             // Cancel the scheduled job if we get a new transcript
             if (future != null) {
                 future.cancel(false);

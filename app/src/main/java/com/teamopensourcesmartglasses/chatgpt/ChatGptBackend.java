@@ -5,6 +5,7 @@ import android.util.Log;
 import com.teamopensourcesmartglasses.chatgpt.events.ChatReceivedEvent;
 import com.teamopensourcesmartglasses.chatgpt.events.OpenAIApiKeyProvidedEvent;
 import com.theokanning.openai.completion.chat.ChatCompletionChoice;
+import com.theokanning.openai.completion.chat.ChatCompletionChunk;
 import com.theokanning.openai.completion.chat.ChatCompletionRequest;
 import com.theokanning.openai.completion.chat.ChatMessage;
 import com.theokanning.openai.completion.chat.ChatMessageRole;
@@ -23,6 +24,7 @@ public class ChatGptBackend {
     private final OpenAiService service;
     private String openAiApiKey;
     private final List<ChatMessage> messages = new ArrayList<>();
+    // private StringBuffer responseMessageBuffer = new StringBuffer();
 
     public ChatGptBackend(){
         EventBus.getDefault().register(this);
@@ -55,6 +57,7 @@ public class ChatGptBackend {
                 ChatCompletionRequest chatCompletionRequest = ChatCompletionRequest.builder()
                         .model("gpt-3.5-turbo")
                         .messages(messages)
+                        .maxTokens(200)
                         .n(1)
                         .build();
 
@@ -76,7 +79,33 @@ public class ChatGptBackend {
                     EventBus.getDefault().post(new ChatReceivedEvent("Something is wrong with openAI service"));
                     e.printStackTrace();
                 }
+
+//                Log.d(TAG, "Streaming chat completion");
+//                service.streamChatCompletion(chatCompletionRequest)
+//                        .doOnError(this::onStreamChatGptError)
+//                        .doOnComplete(this::onStreamComplete)
+//                        .blockingForEach(this::onItemReceivedFromStream);
             }
+
+//            private void onStreamChatGptError(Throwable throwable) {
+//                Log.d(TAG, throwable.getMessage());
+//                EventBus.getDefault().post(new ChatReceivedEvent(throwable.getMessage()));
+//                throwable.printStackTrace();
+//            }
+//
+//            public void onItemReceivedFromStream(ChatCompletionChunk chunk) {
+//                String textChunk = chunk.getChoices().get(0).getMessage().getContent();
+//                Log.d(TAG, "Chunk received from stream: " + textChunk);
+//                EventBus.getDefault().post(new ChatReceivedEvent(textChunk));
+//                responseMessageBuffer.append(textChunk);
+//                responseMessageBuffer.append(" ");
+//            }
+//
+//            public void onStreamComplete() {
+//                String responseMessage = responseMessageBuffer.toString();
+//                messages.add(new ChatMessage(ChatMessageRole.ASSISTANT.value(), responseMessage));
+//                responseMessageBuffer = new StringBuffer();
+//            }
         }
         new Thread(new DoGptStuff()).start();
     }
