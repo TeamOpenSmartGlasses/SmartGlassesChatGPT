@@ -66,7 +66,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
         //Subscribe to transcription stream
         sgmLib.subscribe(DataStreamType.TRANSCRIPTION_ENGLISH_STREAM, this::processTranscriptionCallback);
 
-        Log.d(TAG, "CHATGPT SERVICE STARTED");
+        Log.d(TAG, "onCreate: ChatGPT service started!");
 
         /* Handle SmartGlassesChatGPT specific things */
         EventBus.getDefault().register(this);
@@ -77,18 +77,18 @@ public class ChatGptService extends SmartGlassesAndroidService {
 
     @Override
     public void onDestroy() {
-        Log.d(TAG, "onDestroy called");
+        Log.d(TAG, "onDestroy: Called");
         EventBus.getDefault().unregister(this);
         super.onDestroy();
     }
 
     public void startChatCommandCallback(String args, long commandTriggeredTime) {
-        Log.d(TAG,"Start ChatGPT command callback called");
+        Log.d(TAG, "startChatCommandCallback: Start ChatGPT command callback called");
 
         if (newScreen) {
             newScreen = false;
             sgmLib.startScrollingText("Input prompt");
-            Log.d(TAG, "Added a scrolling text view");
+            Log.d(TAG, "startChatCommandCallback: Added a scrolling text view");
         }
 
         messageBuffer = new StringBuffer();
@@ -123,9 +123,9 @@ public class ChatGptService extends SmartGlassesAndroidService {
                 if (!message.isEmpty()) {
                     chatGptBackend.sendChat(messageBuffer.toString());
                     messageBuffer = new StringBuffer();
-                    Log.d(TAG, "Ran scheduled job and sent message");
+                    Log.d(TAG, "processTranscriptionCallback: Ran scheduled job and sent message");
                 } else {
-                    Log.d(TAG, "Message is empty");
+                    Log.d(TAG, "processTranscriptionCallback: Message is empty");
                 }
             }, 5, TimeUnit.SECONDS);
         }
