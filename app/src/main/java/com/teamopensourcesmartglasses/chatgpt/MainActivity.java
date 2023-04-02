@@ -7,40 +7,26 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 
-import com.google.android.material.snackbar.Snackbar;
-
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.os.IBinder;
 import android.util.Log;
-import android.view.View;
-
-import androidx.navigation.NavController;
-import androidx.navigation.Navigation;
-import androidx.navigation.ui.AppBarConfiguration;
-import androidx.navigation.ui.NavigationUI;
-
-import com.teamopensourcesmartglasses.chatgpt.databinding.ActivityMainBinding;
-import com.teamopensourcesmartglasses.chatgpt.events.ChatReceivedEvent;
 
 import org.greenrobot.eventbus.EventBus;
+import com.teamopensourcesmartglasses.chatgpt.databinding.ActivityMainBinding;
+import com.teamopensourcesmartglasses.chatgpt.events.OpenAIApiKeyProvidedEvent;
 
-import android.view.Menu;
-import android.view.MenuItem;
 import android.widget.Button;
 import android.widget.EditText;
 
 public class MainActivity extends AppCompatActivity {
 
-    private String TAG = "SmartGlassesChatGpt_MainActivity";
+    private final String TAG = "SmartGlassesChatGpt_MainActivity";
     boolean mBound;
     public ChatGptService mService;
-
-    private AppBarConfiguration appBarConfiguration;
     private ActivityMainBinding binding;
     private Button submitButton;
     EditText messageEditText;
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,60 +37,17 @@ public class MainActivity extends AppCompatActivity {
 
         setSupportActionBar(binding.toolbar);
 
-        NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
-        appBarConfiguration = new AppBarConfiguration.Builder(navController.getGraph()).build();
-        NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
-
         submitButton = findViewById(R.id.submit_button);
         messageEditText = findViewById(R.id.edittext_input);
 
-        binding.fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-            }
-        });
-
-        submitButton.setOnClickListener((v)->{
+        submitButton.setOnClickListener((v) -> {
             String apiKey = messageEditText.getText().toString().trim();
-            ChatGptBackend.setApiToken(apiKey);
-            submitButton.setVisibility(View.GONE); // remove the button once the key has been inserted
+            messageEditText.setText(""); // Empty text
+            EventBus.getDefault().post(new OpenAIApiKeyProvidedEvent(apiKey));
         });
 
         startChatGptService();
     }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
-        }
-
-        return super.onOptionsItemSelected(item);
-    }
-
-    @Override
-    public boolean onSupportNavigateUp() {
-        NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
-        return NavigationUI.navigateUp(navController, appBarConfiguration)
-                || super.onSupportNavigateUp();
-    }
-
-
 
     /* SGMLib */
     @Override
@@ -164,19 +107,19 @@ public class MainActivity extends AppCompatActivity {
     public void bindChatGptService(){
         if (!mBound){
             Intent intent = new Intent(this, ChatGptService.class);
-            bindService(intent, translationAppServiceConnection, Context.BIND_AUTO_CREATE);
+            bindService(intent, chatGptAppServiceConnection, Context.BIND_AUTO_CREATE);
         }
     }
 
     public void unbindChatGptService() {
         if (mBound){
-            unbindService(translationAppServiceConnection);
+            unbindService(chatGptAppServiceConnection);
             mBound = false;
         }
     }
 
     /** Defines callbacks for service binding, passed to bindService() */
-    private ServiceConnection translationAppServiceConnection = new ServiceConnection() {
+    private ServiceConnection chatGptAppServiceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName className,
                                        IBinder service) {
@@ -190,5 +133,4 @@ public class MainActivity extends AppCompatActivity {
             mBound = false;
         }
     };
-
 }
