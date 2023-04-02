@@ -35,7 +35,7 @@
         android:autofillHints="Enter text here" />
 
     <Button
-        android:id="@+id/button_first"
+        android:id="@+id/submit_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
@@ -43,6 +43,6 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/edittext_input"
-        tools:ignore="MissingConstraints" />
+        />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

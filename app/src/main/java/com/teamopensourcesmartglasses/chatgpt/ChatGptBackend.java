@@ -24,7 +24,7 @@ public class ChatGptBackend {
     final String TAG = "SmartGlassesChatGpt_ChatGptBackend";
     private final OpenAiService service;
     private String openAiApiKey;
-    private final List<ChatMessage> messages = new ArrayList<>();
+    private final ArrayList<ChatMessage> messages = new ArrayList<ChatMessage>();
     // private StringBuffer responseMessageBuffer = new StringBuffer();
     private final int chatGptMaxTokenSize = 400;
     private final int maxSingleChatTokenSize = 100;
