@@ -6,7 +6,9 @@ import com.teamopensmartglasses.sgmlib.DataStreamType;
 import com.teamopensmartglasses.sgmlib.SGMCommand;
 import com.teamopensmartglasses.sgmlib.SGMLib;
 import com.teamopensmartglasses.sgmlib.SmartGlassesAndroidService;
+import com.teamopensourcesmartglasses.chatgpt.events.ChatErrorEvent;
 import com.teamopensourcesmartglasses.chatgpt.events.ChatReceivedEvent;
+import com.teamopensourcesmartglasses.chatgpt.events.OpenAIApiKeyProvidedEvent;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -30,6 +32,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
     private boolean userTurnLabelSet = false;
     private final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
     private Future<?> future;
+    private boolean openAiKeyProvided = false;
 
     // Todo: make this app only usable if key is provided
 
@@ -85,6 +88,11 @@ public class ChatGptService extends SmartGlassesAndroidService {
     public void startChatCommandCallback(String args, long commandTriggeredTime) {
         Log.d(TAG, "startChatCommandCallback: Start ChatGPT command callback called");
 
+        if (!openAiKeyProvided) {
+            sgmLib.sendReferenceCard("Unable to use ChatGpt", "No openAI key has been provided, please enter a openAI api key in the ChatGpt App");
+            return;
+        }
+
         if (newScreen) {
             newScreen = false;
             sgmLib.startScrollingText("Input prompt");
@@ -98,7 +106,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
     public void processTranscriptionCallback(String transcript, long timestamp, boolean isFinal){
         // We want to send our message in our message buffer when we stop speaking for like 9 seconds
         // If the transcript is finalized, then we add it to our buffer, and reset our timer
-        if(!newScreen && isFinal){
+        if(!newScreen && isFinal && openAiKeyProvided){
             Log.d(TAG, messageBuffer.toString());
             messageBuffer.append(transcript);
             messageBuffer.append(" ");
@@ -136,5 +144,18 @@ public class ChatGptService extends SmartGlassesAndroidService {
         sgmLib.pushScrollingText(">>> ChatGpt Response:");
         sgmLib.pushScrollingText(event.message);
         userTurnLabelSet = false;
+    }
+
+    @Subscribe
+    public void onChatError(ChatErrorEvent event) {
+        sgmLib.sendReferenceCard("Something wrong with ChatGpt", event.getErrorMessage());
+    }
+
+    @Subscribe
+    public void onOpenAIApiKeyProvided(OpenAIApiKeyProvidedEvent event) {
+        Log.d(TAG, "onOpenAIApiKeyProvided: Enabling ChatGpt command");
+        openAiKeyProvided = true;
+        newScreen = true;
+        chatGptBackend.clearMessages();
     }
 }
