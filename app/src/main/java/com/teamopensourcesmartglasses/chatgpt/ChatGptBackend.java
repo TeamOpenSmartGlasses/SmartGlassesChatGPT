@@ -2,6 +2,7 @@ package com.teamopensourcesmartglasses.chatgpt;
 
 import android.util.Log;
 
+import com.teamopensourcesmartglasses.chatgpt.events.ChatErrorEvent;
 import com.teamopensourcesmartglasses.chatgpt.events.ChatReceivedEvent;
 import com.teamopensourcesmartglasses.chatgpt.events.OpenAIApiKeyProvidedEvent;
 import com.theokanning.openai.completion.chat.ChatCompletionChoice;
@@ -21,22 +22,29 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class ChatGptBackend {
-    final String TAG = "SmartGlassesChatGpt_ChatGptBackend";
-    private final OpenAiService service;
-    private String openAiApiKey;
+    public final String TAG = "SmartGlassesChatGpt_ChatGptBackend";
+    public final ChatMessage systemMessage = new ChatMessage(ChatMessageRole.SYSTEM.value(),  "You are a friendly assistant that likes talking about philosophy and constantly thinks of interesting questions for the user");
+    private OpenAiService service;
     private final List<ChatMessage> messages = new ArrayList<>();
     // private StringBuffer responseMessageBuffer = new StringBuffer();
-    private final int chatGptMaxTokenSize = 400;
-    private final int maxSingleChatTokenSize = 100;
+    private final int chatGptMaxTokenSize = 2000;
+    private final int maxSingleChatTokenSize = 150;
+    private final int openAiServiceTimeoutDuration = 110;
+
+//    public static void setApiToken(String token) {
+//        Log.d("SmartGlassesChatGpt_ChatGptBackend", "setApiToken: token set");
+//        apiToken = token;
+//        EventBus.getDefault().post(new OpenAIApiKeyProvidedEvent(token));
+//    }
 
     public ChatGptBackend(){
         EventBus.getDefault().register(this);
-
-        // ChatGPT config
-        String token = "";
-        service = new OpenAiService(token, Duration.ofSeconds(60));
-        final ChatMessage systemMessage = new ChatMessage(ChatMessageRole.SYSTEM.value(), "You are a dog and will speak as such.");
         messages.add(systemMessage);
+    }
+
+    public void initChatGptService(String token) {
+        // Setup ChatGpt with a token
+        service = new OpenAiService(token, Duration.ofSeconds(openAiServiceTimeoutDuration));
     }
 
     public void sendChat(String message){
@@ -51,10 +59,10 @@ public class ChatGptBackend {
                 Log.d(TAG, "run: Doing gpt stuff, got message: " + message);
                 messages.add(new ChatMessage(ChatMessageRole.USER.value(), message));
 
-                Log.d(TAG, "run: New Message Stack: ");
-                for (ChatMessage message : messages) {
-                    Log.d(TAG, message.getRole() + ": " + message.getContent());
-                }
+//                Log.d(TAG, "run: New Message Stack: ");
+//                for (ChatMessage message : messages) {
+//                    Log.d(TAG, message.getRole() + ": " + message.getContent());
+//                }
 
                 // Todo: Change completions to streams
                 ChatCompletionRequest chatCompletionRequest = ChatCompletionRequest.builder()
@@ -73,9 +81,9 @@ public class ChatGptBackend {
                                                         .collect(Collectors.toList());
 
                     // Make sure there is still space for next messages
-                    // Just use a simple approximation, if current request is more than 85% of max, we clear half of it
+                    // Just use a simple approximation, if current request is more than 90% of max, we clear half of it
                     long tokensUsed = result.getUsage().getTotalTokens();
-                    Log.d(TAG, "run: run: tokens used: " + tokensUsed);
+                    Log.d(TAG, "run: tokens used: " + tokensUsed + "/" + chatGptMaxTokenSize);
                     if (tokensUsed >= chatGptMaxTokenSize * 0.90) {
                         for (int i = 0; i < messages.size() / 2; i++) {
                             messages.remove(1);
@@ -89,8 +97,7 @@ public class ChatGptBackend {
                     messages.add(response);
                 } catch (Exception e){
                     Log.d(TAG, "run: encountered error: " + e.getMessage());
-                    EventBus.getDefault().post(new ChatReceivedEvent("Something is wrong with openAI service"));
-                    e.printStackTrace();
+                    EventBus.getDefault().post(new ChatErrorEvent(e.getMessage()));
                 }
 
 //                Log.d(TAG, "Streaming chat completion");
@@ -123,9 +130,15 @@ public class ChatGptBackend {
         new Thread(new DoGptStuff()).start();
     }
 
+    public void clearMessages() {
+        messages.clear();
+        messages.add(systemMessage);
+    }
+
     @Subscribe
     public void onOpenAIApiKeyProvided(OpenAIApiKeyProvidedEvent event) {
-        // A feature for users to input their own key
-        openAiApiKey = event.token;
+        // Everytime a user submits a token, we reset the service with that api key
+        Log.d(TAG, "onOpenAIApiKeyProvided: Got user key " + event.token);
+        initChatGptService(event.token);
     }
 }
