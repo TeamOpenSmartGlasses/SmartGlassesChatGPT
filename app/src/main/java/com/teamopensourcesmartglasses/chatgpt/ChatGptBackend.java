@@ -27,8 +27,9 @@ public class ChatGptBackend {
     private OpenAiService service;
     private final List<ChatMessage> messages = new ArrayList<>();
     // private StringBuffer responseMessageBuffer = new StringBuffer();
-    private final int chatGptMaxTokenSize = 400;
-    private final int maxSingleChatTokenSize = 100;
+    private final int chatGptMaxTokenSize = 2000;
+    private final int maxSingleChatTokenSize = 150;
+    private final int openAiServiceTimeoutDuration = 110;
 
 //    public static void setApiToken(String token) {
 //        Log.d("SmartGlassesChatGpt_ChatGptBackend", "setApiToken: token set");
@@ -43,7 +44,7 @@ public class ChatGptBackend {
 
     public void initChatGptService(String token) {
         // Setup ChatGpt with a token
-        service = new OpenAiService(token, Duration.ofSeconds(110));
+        service = new OpenAiService(token, Duration.ofSeconds(openAiServiceTimeoutDuration));
     }
 
     public void sendChat(String message){
@@ -58,10 +59,10 @@ public class ChatGptBackend {
                 Log.d(TAG, "run: Doing gpt stuff, got message: " + message);
                 messages.add(new ChatMessage(ChatMessageRole.USER.value(), message));
 
-                Log.d(TAG, "run: New Message Stack: ");
-                for (ChatMessage message : messages) {
-                    Log.d(TAG, message.getRole() + ": " + message.getContent());
-                }
+//                Log.d(TAG, "run: New Message Stack: ");
+//                for (ChatMessage message : messages) {
+//                    Log.d(TAG, message.getRole() + ": " + message.getContent());
+//                }
 
                 // Todo: Change completions to streams
                 ChatCompletionRequest chatCompletionRequest = ChatCompletionRequest.builder()
