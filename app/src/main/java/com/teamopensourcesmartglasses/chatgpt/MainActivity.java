@@ -21,10 +21,14 @@ import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
 
 import com.teamopensourcesmartglasses.chatgpt.databinding.ActivityMainBinding;
+import com.teamopensourcesmartglasses.chatgpt.events.ChatReceivedEvent;
+
+import org.greenrobot.eventbus.EventBus;
 
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Button;
+import android.widget.EditText;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -35,6 +39,8 @@ public class MainActivity extends AppCompatActivity {
     private AppBarConfiguration appBarConfiguration;
     private ActivityMainBinding binding;
     private Button submitButton;
+    EditText messageEditText;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,6 +56,7 @@ public class MainActivity extends AppCompatActivity {
         NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
 
         submitButton = findViewById(R.id.submit_button);
+        messageEditText = findViewById(R.id.edittext_input);
 
         binding.fab.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -59,7 +66,11 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        submitButton.setOnClickListener((v)->{});
+        submitButton.setOnClickListener((v)->{
+            String apiKey = messageEditText.getText().toString().trim();
+            ChatGptBackend.setApiToken(apiKey);
+            submitButton.setVisibility(View.GONE); // remove the button once the key has been inserted
+        });
 
         startChatGptService();
     }

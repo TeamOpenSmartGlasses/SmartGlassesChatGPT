@@ -28,6 +28,7 @@ public class ChatGptBackend {
     // private StringBuffer responseMessageBuffer = new StringBuffer();
     private final int chatGptMaxTokenSize = 400;
     private final int maxSingleChatTokenSize = 100;
+    private static String apiToken = "";
 
     public ChatGptBackend(){
         EventBus.getDefault().register(this);
@@ -121,6 +122,10 @@ public class ChatGptBackend {
 //            }
         }
         new Thread(new DoGptStuff()).start();
+    }
+
+    public static void setApiToken(String token) {
+        apiToken = token;
     }
 
     @Subscribe
