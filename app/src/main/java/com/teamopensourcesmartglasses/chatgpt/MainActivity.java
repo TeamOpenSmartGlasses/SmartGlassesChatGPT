@@ -5,6 +5,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -18,6 +19,7 @@ import com.teamopensourcesmartglasses.chatgpt.events.OpenAIApiKeyProvidedEvent;
 
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Toast;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -34,19 +36,35 @@ public class MainActivity extends AppCompatActivity {
 
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
-
         setSupportActionBar(binding.toolbar);
 
-        submitButton = findViewById(R.id.submit_button);
-        messageEditText = findViewById(R.id.edittext_input);
+        startChatGptService();
 
+        // Show toasts if we have or don't have a key saved
+        SharedPreferences sharedPreferences = getSharedPreferences("user.config", Context.MODE_PRIVATE);
+        if (sharedPreferences.contains("openAiKey")) {
+            String savedKey = sharedPreferences.getString("openAiKey", "");
+            Toast.makeText(this, "OpenAI key found", Toast.LENGTH_LONG).show();
+        } else {
+            Toast.makeText(this, "No OpenAI key found, please add one", Toast.LENGTH_LONG).show();
+        }
+
+        // UI handlers
+        messageEditText = findViewById(R.id.edittext_input);
+        submitButton = findViewById(R.id.submit_button);
         submitButton.setOnClickListener((v) -> {
             String apiKey = messageEditText.getText().toString().trim();
             messageEditText.setText(""); // Empty text
-            EventBus.getDefault().post(new OpenAIApiKeyProvidedEvent(apiKey));
-        });
 
-        startChatGptService();
+            // Save to shared preference
+            SharedPreferences.Editor editor = sharedPreferences.edit();
+            editor.putString("openAiKey", apiKey);
+            editor.apply();
+            EventBus.getDefault().post(new OpenAIApiKeyProvidedEvent(apiKey));
+
+            // Toast to inform user that key has been saved
+            Toast.makeText(this, "OpenAi key saved for future sessions", Toast.LENGTH_LONG).show();
+        });
     }
 
     /* SGMLib */
