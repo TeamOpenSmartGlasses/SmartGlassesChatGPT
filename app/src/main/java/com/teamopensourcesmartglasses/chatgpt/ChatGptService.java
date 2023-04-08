@@ -1,5 +1,7 @@
 package com.teamopensourcesmartglasses.chatgpt;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.util.Log;
 
 import com.teamopensmartglasses.sgmlib.DataStreamType;
@@ -58,7 +60,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
         UUID startChatCommandUUID = UUID.fromString("c3b5bbfd-4416-4006-8b40-12346ac37aec");
 
         // Define list of phrases to be used to trigger each command
-        String[] startChatTriggerPhrases = new String[] { "Start chat session", "Launch chat", "Let's talk", "Hi Michael" };
+        String[] startChatTriggerPhrases = new String[] { "Start chat session" };
 
         //Create command objects
         SGMCommand startChatCommand = new SGMCommand(appName, startChatCommandUUID, startChatTriggerPhrases, "Start a ChatGPT session for your smart glasses!");
@@ -75,6 +77,16 @@ public class ChatGptService extends SmartGlassesAndroidService {
         EventBus.getDefault().register(this);
         chatGptBackend = new ChatGptBackend();
 
+        // Putting a separate sharedPreferences here instead of through the event bus from mainActivity
+        // so I don't have to deal with waiting for this service to finish its startup
+        SharedPreferences sharedPreferences = getSharedPreferences("user.config", Context.MODE_PRIVATE);
+        if (sharedPreferences.contains("openAiKey")) {
+            String savedKey = sharedPreferences.getString("openAiKey", "");
+            EventBus.getDefault().post(new OpenAIApiKeyProvidedEvent(savedKey));
+        } else {
+            Log.d(TAG, "ChatGptService: No key exists");
+        }
+
         // startTimer();
     }
 
@@ -87,7 +99,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
 
     public void startChatCommandCallback(String args, long commandTriggeredTime) {
         Log.d(TAG, "startChatCommandCallback: Start ChatGPT command callback called");
-
+        Log.d(TAG, "startChatCommandCallback: OpenAiApiKeyProvided:" + openAiKeyProvided);
         if (!openAiKeyProvided) {
             sgmLib.sendReferenceCard("Unable to use ChatGpt", "No openAI key has been provided, please enter a openAI api key in the ChatGpt App");
             return;
@@ -107,12 +119,11 @@ public class ChatGptService extends SmartGlassesAndroidService {
         // We want to send our message in our message buffer when we stop speaking for like 9 seconds
         // If the transcript is finalized, then we add it to our buffer, and reset our timer
         if(!newScreen && isFinal && openAiKeyProvided){
-            Log.d(TAG, messageBuffer.toString());
             messageBuffer.append(transcript);
             messageBuffer.append(" ");
 
             if (!userTurnLabelSet) {
-                sgmLib.pushScrollingText(">>> User says:");
+                transcript = "User: " + transcript;
                 userTurnLabelSet = true;
             }
             sgmLib.pushScrollingText(transcript);
@@ -141,8 +152,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
 
     @Subscribe
     public void onChatReceived(ChatReceivedEvent event) {
-        sgmLib.pushScrollingText(">>> ChatGpt Response:");
-        sgmLib.pushScrollingText(event.message);
+        sgmLib.pushScrollingText("ChatGpt: " + event.message.trim());
         userTurnLabelSet = false;
     }
 
