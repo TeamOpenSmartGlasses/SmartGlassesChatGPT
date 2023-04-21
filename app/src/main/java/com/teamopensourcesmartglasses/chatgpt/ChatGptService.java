@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import android.util.Log;
 
 import com.teamopensmartglasses.sgmlib.DataStreamType;
+import com.teamopensmartglasses.sgmlib.FocusStates;
 import com.teamopensmartglasses.sgmlib.SGMCommand;
 import com.teamopensmartglasses.sgmlib.SGMLib;
 import com.teamopensmartglasses.sgmlib.SmartGlassesAndroidService;
@@ -24,19 +25,18 @@ import java.util.concurrent.TimeUnit;
 public class ChatGptService extends SmartGlassesAndroidService {
     public final String TAG = "SmartGlassesChatGpt_ChatGptService";
     static final String appName = "SmartGlassesChatGpt";
-    public ChatGptBackend chatGptBackend;
 
     //our instance of the SGM library
     public SGMLib sgmLib;
+    public FocusStates focusState;
+    public ChatGptBackend chatGptBackend;
 
     public StringBuffer messageBuffer = new StringBuffer();
-    private boolean newScreen = true;
+//    private boolean newScreen = true;
     private boolean userTurnLabelSet = false;
     private final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
     private Future<?> future;
     private boolean openAiKeyProvided = false;
-
-    // Todo: make this app only usable if key is provided
 
     public ChatGptService(){
         super(MainActivity.class,
@@ -49,6 +49,8 @@ public class ChatGptService extends SmartGlassesAndroidService {
     @Override
     public void onCreate() {
         super.onCreate();
+
+        focusState = FocusStates.OUT_FOCUS;
 
         /* Handle SGMLib specific things */
 
@@ -94,6 +96,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
     public void onDestroy() {
         Log.d(TAG, "onDestroy: Called");
         EventBus.getDefault().unregister(this);
+        sgmLib.deinit();
         super.onDestroy();
     }
 
@@ -105,9 +108,10 @@ public class ChatGptService extends SmartGlassesAndroidService {
             return;
         }
 
-        if (newScreen) {
-            newScreen = false;
-            sgmLib.startScrollingText("Input prompt");
+        //StartScrollingText to show our translation
+        if (focusState.equals(FocusStates.OUT_FOCUS)) {
+            focusState = FocusStates.IN_FOCUS;
+            sgmLib.startScrollingText("Input prompt: ");
             Log.d(TAG, "startChatCommandCallback: Added a scrolling text view");
         }
 
@@ -116,9 +120,14 @@ public class ChatGptService extends SmartGlassesAndroidService {
     }
 
     public void processTranscriptionCallback(String transcript, long timestamp, boolean isFinal){
+        // Don't execute if we're not in focus
+        if (!focusState.equals(FocusStates.IN_FOCUS)){
+            return;
+        }
+
         // We want to send our message in our message buffer when we stop speaking for like 9 seconds
         // If the transcript is finalized, then we add it to our buffer, and reset our timer
-        if(!newScreen && isFinal && openAiKeyProvided){
+        if (isFinal && openAiKeyProvided){
             messageBuffer.append(transcript);
             messageBuffer.append(" ");
 
@@ -127,8 +136,6 @@ public class ChatGptService extends SmartGlassesAndroidService {
                 userTurnLabelSet = true;
             }
             sgmLib.pushScrollingText(transcript);
-
-            if (newScreen) return;
 
             // Cancel the scheduled job if we get a new transcript
             if (future != null) {
@@ -165,7 +172,6 @@ public class ChatGptService extends SmartGlassesAndroidService {
     public void onOpenAIApiKeyProvided(OpenAIApiKeyProvidedEvent event) {
         Log.d(TAG, "onOpenAIApiKeyProvided: Enabling ChatGpt command");
         openAiKeyProvided = true;
-        newScreen = true;
         chatGptBackend.clearMessages();
     }
 }
