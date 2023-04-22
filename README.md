@@ -43,6 +43,15 @@ If you would like to contribute to this project, please fork the repository and 
 
 Before submitting a pull request, please make sure that your code adheres to the project's coding standards, and that all tests pass.
 
+### App structure
+
+General guide on how to make a 3rd party app for the Smart Glasses Manager can be found here: [SGM Wiki](https://github.com/TeamOpenSmartGlasses/SmartGlassesManager/wiki)
+
+For our app, its the same, the main thing you might want to look at is the
+
+- ```ChatGptBackend.java``` file for handling the integration logic with the OpenAi Service
+- ```ChatGptService.java``` file for handling the sgmLib integration logic
+
 ## License
 
 This project is licensed under the MIT License. See the LICENSE file for details.
