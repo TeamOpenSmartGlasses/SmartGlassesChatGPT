@@ -196,7 +196,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
 
     @Subscribe
     public void onQuestionAnswerReceivedEvent(QuestionAnswerReceivedEvent event) {
-        String body = "Q: " + event.getQuestion() + "\n" + "A: " + event.getAnswer();
+        String body = "Q: " + event.getQuestion() + "\n\n" + "A: " + event.getAnswer();
         sgmLib.sendReferenceCard("AskGpt", body);
     }
 
