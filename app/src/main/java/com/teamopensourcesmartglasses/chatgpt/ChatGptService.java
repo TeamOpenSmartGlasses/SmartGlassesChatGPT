@@ -12,6 +12,7 @@ import com.teamopensmartglasses.sgmlib.SmartGlassesAndroidService;
 import com.teamopensourcesmartglasses.chatgpt.events.ChatErrorEvent;
 import com.teamopensourcesmartglasses.chatgpt.events.ChatReceivedEvent;
 import com.teamopensourcesmartglasses.chatgpt.events.OpenAIApiKeyProvidedEvent;
+import com.teamopensourcesmartglasses.chatgpt.events.QuestionAnswerReceivedEvent;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -32,11 +33,11 @@ public class ChatGptService extends SmartGlassesAndroidService {
     public ChatGptBackend chatGptBackend;
 
     public StringBuffer messageBuffer = new StringBuffer();
-//    private boolean newScreen = true;
     private boolean userTurnLabelSet = false;
     private final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
     private Future<?> future;
     private boolean openAiKeyProvided = false;
+    private ChatGptAppMode mode = ChatGptAppMode.Inactive;
 
     public ChatGptService(){
         super(MainActivity.class,
@@ -58,17 +59,12 @@ public class ChatGptService extends SmartGlassesAndroidService {
         sgmLib = new SGMLib(this);
 
         // Define commands
-        // Each command has a UUID, trigger phrases and description
-        UUID startChatCommandUUID = UUID.fromString("c3b5bbfd-4416-4006-8b40-12346ac3abcf");
-
-        // Define list of phrases to be used to trigger each command
-        String[] startChatTriggerPhrases = new String[] { "avocado" };
-
-        //Create command objects
-        SGMCommand startChatCommand = new SGMCommand(appName, startChatCommandUUID, startChatTriggerPhrases, "Start a ChatGPT session for your smart glasses!");
+        SGMCommand startChatCommand = new SGMCommand(appName, UUID.fromString("c3b5bbfd-4416-4006-8b40-12346ac3abcf"), new String[] { "conversation" }, "Start a ChatGPT session for your smart glasses!");
+        SGMCommand askGptCommand = new SGMCommand(appName, UUID.fromString("c367ba2d-4416-8768-8b15-19046ac3a2af"), new String[] { "question" }, "Ask a one shot question to ChatGpt based on your existing context");
 
         //Register the command
         sgmLib.registerCommand(startChatCommand, this::startChatCommandCallback);
+        sgmLib.registerCommand(askGptCommand, this::askGptCommandCommand);
 
         //Subscribe to transcription stream
         sgmLib.subscribe(DataStreamType.TRANSCRIPTION_ENGLISH_STREAM, this::processTranscriptionCallback);
@@ -84,7 +80,8 @@ public class ChatGptService extends SmartGlassesAndroidService {
         SharedPreferences sharedPreferences = getSharedPreferences("user.config", Context.MODE_PRIVATE);
         if (sharedPreferences.contains("openAiKey")) {
             String savedKey = sharedPreferences.getString("openAiKey", "");
-            EventBus.getDefault().post(new OpenAIApiKeyProvidedEvent(savedKey));
+            openAiKeyProvided = true;
+            chatGptBackend.initChatGptService(savedKey);
         } else {
             Log.d(TAG, "ChatGptService: No key exists");
         }
@@ -103,13 +100,31 @@ public class ChatGptService extends SmartGlassesAndroidService {
     public void startChatCommandCallback(String args, long commandTriggeredTime) {
         Log.d(TAG, "startChatCommandCallback: Start ChatGPT command callback called");
         Log.d(TAG, "startChatCommandCallback: OpenAiApiKeyProvided:" + openAiKeyProvided);
-        if (!openAiKeyProvided) {
-            sgmLib.sendReferenceCard("Unable to use ChatGpt", "No openAI key has been provided, please enter a openAI api key in the ChatGpt App");
-            return;
-        }
 
-        //request to be the in focus app so we can continue to show transcripts
+        // request to be the in focus app so we can continue to show transcripts
         sgmLib.requestFocus(this::focusChangedCallback);
+
+        mode = ChatGptAppMode.Conversation;
+        Log.d(TAG, "startChatCommandCallback: Set app mode to conversation");
+
+        // we might had been in the middle of a question, so when we switch back to a conversation,
+        // we reset our messageBuffer
+        resetUserMessage();
+    }
+
+    public void askGptCommandCommand(String args, long commandTriggeredTime) {
+        Log.d(TAG, "askGptCommandCallback: Ask ChatGPT command callback called");
+        Log.d(TAG, "askGptCommandCallback: OpenAiApiKeyProvided:" + openAiKeyProvided);
+
+        // request to be the in focus app so we can continue to show transcripts
+        sgmLib.requestFocus(this::focusChangedCallback);
+
+        mode = ChatGptAppMode.Question;
+        Log.d(TAG, "askGptCommandCommand: Set app mode to question");
+
+        // we might had been in the middle of a conversation, so when we switch to a question,
+        // we need to reset our messageBuffer
+        resetUserMessage();
     }
 
     public void focusChangedCallback(FocusStates focusState){
@@ -122,13 +137,12 @@ public class ChatGptService extends SmartGlassesAndroidService {
             Log.d(TAG, "startChatCommandCallback: Added a scrolling text view");
 
             messageBuffer = new StringBuffer();
-            sgmLib.pushScrollingText(">>> Conversation started");
         }
     }
 
     public void processTranscriptionCallback(String transcript, long timestamp, boolean isFinal){
-        // Don't execute if we're not in focus
-        if (!focusState.equals(FocusStates.IN_FOCUS)){
+        // Don't execute if we're not in focus or no mode is set
+        if (!focusState.equals(FocusStates.IN_FOCUS) || mode == ChatGptAppMode.Inactive){
             return;
         }
 
@@ -155,20 +169,35 @@ public class ChatGptService extends SmartGlassesAndroidService {
                 String message = messageBuffer.toString();
                 
                 if (!message.isEmpty()) {
-                    chatGptBackend.sendChat(messageBuffer.toString());
+                    chatGptBackend.sendChat(messageBuffer.toString(), mode);
                     messageBuffer = new StringBuffer();
                     Log.d(TAG, "processTranscriptionCallback: Ran scheduled job and sent message");
                 } else {
                     Log.d(TAG, "processTranscriptionCallback: Message is empty");
                 }
-            }, 5, TimeUnit.SECONDS);
+            }, 10, TimeUnit.SECONDS);
         }
+    }
+
+    private void resetUserMessage() {
+        // Cancel the scheduled job if we get a new transcript
+        if (future != null) {
+            future.cancel(false);
+            Log.d(TAG, "resetUserMessage: Cancelled scheduled job");
+        }
+        messageBuffer = new StringBuffer();
     }
 
     @Subscribe
     public void onChatReceived(ChatReceivedEvent event) {
         sgmLib.pushScrollingText("ChatGpt: " + event.message.trim());
         userTurnLabelSet = false;
+    }
+
+    @Subscribe
+    public void onQuestionAnswerReceivedEvent(QuestionAnswerReceivedEvent event) {
+        String body = "Q: " + event.getQuestion() + "\n" + "A: " + event.getAnswer();
+        sgmLib.sendReferenceCard("AskGpt", body);
     }
 
     @Subscribe
@@ -180,6 +209,6 @@ public class ChatGptService extends SmartGlassesAndroidService {
     public void onOpenAIApiKeyProvided(OpenAIApiKeyProvidedEvent event) {
         Log.d(TAG, "onOpenAIApiKeyProvided: Enabling ChatGpt command");
         openAiKeyProvided = true;
-        chatGptBackend.clearMessages();
+        chatGptBackend.initChatGptService(event.token);
     }
 }
