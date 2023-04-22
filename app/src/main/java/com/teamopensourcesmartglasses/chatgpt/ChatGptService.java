@@ -59,10 +59,10 @@ public class ChatGptService extends SmartGlassesAndroidService {
 
         // Define commands
         // Each command has a UUID, trigger phrases and description
-        UUID startChatCommandUUID = UUID.fromString("c3b5bbfd-4416-4006-8b40-12346ac37aec");
+        UUID startChatCommandUUID = UUID.fromString("c3b5bbfd-4416-4006-8b40-12346ac3abcf");
 
         // Define list of phrases to be used to trigger each command
-        String[] startChatTriggerPhrases = new String[] { "Start chat session" };
+        String[] startChatTriggerPhrases = new String[] { "avocado" };
 
         //Create command objects
         SGMCommand startChatCommand = new SGMCommand(appName, startChatCommandUUID, startChatTriggerPhrases, "Start a ChatGPT session for your smart glasses!");
@@ -108,15 +108,22 @@ public class ChatGptService extends SmartGlassesAndroidService {
             return;
         }
 
+        //request to be the in focus app so we can continue to show transcripts
+        sgmLib.requestFocus(this::focusChangedCallback);
+    }
+
+    public void focusChangedCallback(FocusStates focusState){
+        Log.d(TAG, "Focus callback called with state: " + focusState);
+        this.focusState = focusState;
+
         //StartScrollingText to show our translation
-        if (focusState.equals(FocusStates.OUT_FOCUS)) {
-            focusState = FocusStates.IN_FOCUS;
+        if (focusState.equals(FocusStates.IN_FOCUS)) {
             sgmLib.startScrollingText("Input prompt: ");
             Log.d(TAG, "startChatCommandCallback: Added a scrolling text view");
-        }
 
-        messageBuffer = new StringBuffer();
-        sgmLib.pushScrollingText(">>> Conversation started");
+            messageBuffer = new StringBuffer();
+            sgmLib.pushScrollingText(">>> Conversation started");
+        }
     }
 
     public void processTranscriptionCallback(String transcript, long timestamp, boolean isFinal){
@@ -128,6 +135,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
         // We want to send our message in our message buffer when we stop speaking for like 9 seconds
         // If the transcript is finalized, then we add it to our buffer, and reset our timer
         if (isFinal && openAiKeyProvided){
+            Log.d(TAG, "processTranscriptionCallback: " + transcript);
             messageBuffer.append(transcript);
             messageBuffer.append(" ");
 

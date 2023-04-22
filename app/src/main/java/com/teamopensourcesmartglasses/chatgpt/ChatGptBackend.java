@@ -84,7 +84,7 @@ public class ChatGptBackend {
                     // Just use a simple approximation, if current request is more than 90% of max, we clear half of it
                     long tokensUsed = result.getUsage().getTotalTokens();
                     Log.d(TAG, "run: tokens used: " + tokensUsed + "/" + chatGptMaxTokenSize);
-                    if (tokensUsed >= chatGptMaxTokenSize * 0.90) {
+                    if (tokensUsed >= chatGptMaxTokenSize * 0.75) {
                         for (int i = 0; i < messages.size() / 2; i++) {
                             messages.remove(1);
                         }
@@ -92,6 +92,7 @@ public class ChatGptBackend {
 
                     // Send an chat received response
                     ChatMessage response = responses.get(0);
+                    Log.d(TAG, "run: " + response.getContent());
                     EventBus.getDefault().post(new ChatReceivedEvent(response.getContent()));
                     // Add back to chat
                     messages.add(response);
