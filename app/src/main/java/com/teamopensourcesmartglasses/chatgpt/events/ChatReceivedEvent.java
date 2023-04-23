@@ -2,5 +2,8 @@ package com.teamopensourcesmartglasses.chatgpt.events;
 
 public class ChatReceivedEvent {
     public final String message;
-    public ChatReceivedEvent(String myMessage){message = myMessage;}
+
+    public ChatReceivedEvent(String newMessage){
+        message = newMessage;
+    }
 }
