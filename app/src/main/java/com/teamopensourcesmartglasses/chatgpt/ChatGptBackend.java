@@ -5,6 +5,7 @@ import android.util.Log;
 import com.teamopensourcesmartglasses.chatgpt.events.ChatErrorEvent;
 import com.teamopensourcesmartglasses.chatgpt.events.ChatReceivedEvent;
 import com.teamopensourcesmartglasses.chatgpt.events.OpenAIApiKeyProvidedEvent;
+import com.teamopensourcesmartglasses.chatgpt.events.QuestionAnswerReceivedEvent;
 import com.theokanning.openai.completion.chat.ChatCompletionChoice;
 import com.theokanning.openai.completion.chat.ChatCompletionChunk;
 import com.theokanning.openai.completion.chat.ChatCompletionRequest;
@@ -27,8 +28,8 @@ public class ChatGptBackend {
     private OpenAiService service;
     private final List<ChatMessage> messages = new ArrayList<>();
     // private StringBuffer responseMessageBuffer = new StringBuffer();
-    private final int chatGptMaxTokenSize = 2000;
-    private final int maxSingleChatTokenSize = 150;
+    private final int chatGptMaxTokenSize = 4096;
+    private final int maxSingleChatTokenSize = 200;
     private final int openAiServiceTimeoutDuration = 110;
 
 //    public static void setApiToken(String token) {
@@ -37,17 +38,22 @@ public class ChatGptBackend {
 //        EventBus.getDefault().post(new OpenAIApiKeyProvidedEvent(token));
 //    }
 
-    public ChatGptBackend(){
-        EventBus.getDefault().register(this);
-        messages.add(systemMessage);
-    }
+    public ChatGptBackend(){}
 
     public void initChatGptService(String token) {
         // Setup ChatGpt with a token
         service = new OpenAiService(token, Duration.ofSeconds(openAiServiceTimeoutDuration));
+        messages.clear();
+        messages.add(systemMessage);
     }
 
-    public void sendChat(String message){
+    public void sendChat(String message, ChatGptAppMode mode){
+        // Don't run if openAI service is not initialized yet
+        if (service == null) {
+            EventBus.getDefault().post(new ChatErrorEvent("OpenAi Key has not been provided yet. Please do so in the app."));
+            return;
+        }
+
         // Just an example of how this would work (pulled mostly from openai-java library example)...:
         // 1. Send message to ChatGPT
         // 2. Wait for response
@@ -81,10 +87,10 @@ public class ChatGptBackend {
                                                         .collect(Collectors.toList());
 
                     // Make sure there is still space for next messages
-                    // Just use a simple approximation, if current request is more than 90% of max, we clear half of it
+                    // Just use a simple approximation, if current request is more than 75% of max, we clear half of it
                     long tokensUsed = result.getUsage().getTotalTokens();
                     Log.d(TAG, "run: tokens used: " + tokensUsed + "/" + chatGptMaxTokenSize);
-                    if (tokensUsed >= chatGptMaxTokenSize * 0.90) {
+                    if (tokensUsed >= chatGptMaxTokenSize * 0.75) {
                         for (int i = 0; i < messages.size() / 2; i++) {
                             messages.remove(1);
                         }
@@ -92,9 +98,28 @@ public class ChatGptBackend {
 
                     // Send an chat received response
                     ChatMessage response = responses.get(0);
-                    EventBus.getDefault().post(new ChatReceivedEvent(response.getContent()));
-                    // Add back to chat
-                    messages.add(response);
+                    Log.d(TAG, "run: " + response.getContent());
+
+                    // Add back to chat UI and internal history
+                    if (mode == ChatGptAppMode.Conversation) {
+                        EventBus.getDefault().post(new ChatReceivedEvent(response.getContent()));
+                        messages.add(response);
+                    }
+
+                    // Send back one off question and answer
+                    if (mode == ChatGptAppMode.Question) {
+                        EventBus.getDefault().post(new QuestionAnswerReceivedEvent(message, response.getContent()));
+
+                        // Edit the last user message to specify that it was a question
+                        int lastIndex = messages.size() - 1;
+                        ChatMessage lastUserMessage = messages.get(lastIndex);
+                        lastUserMessage.setContent("User asked a question: " + lastUserMessage.getContent());
+                        messages.set(lastIndex, lastUserMessage);
+
+                        // Specify on the answer side as well
+                        response.setContent("Got an answer: " + response.getContent());
+                        messages.add(response);
+                    }
                 } catch (Exception e){
                     Log.d(TAG, "run: encountered error: " + e.getMessage());
                     EventBus.getDefault().post(new ChatErrorEvent(e.getMessage()));
@@ -128,17 +153,5 @@ public class ChatGptBackend {
 //            }
         }
         new Thread(new DoGptStuff()).start();
-    }
-
-    public void clearMessages() {
-        messages.clear();
-        messages.add(systemMessage);
-    }
-
-    @Subscribe
-    public void onOpenAIApiKeyProvided(OpenAIApiKeyProvidedEvent event) {
-        // Everytime a user submits a token, we reset the service with that api key
-        Log.d(TAG, "onOpenAIApiKeyProvided: Got user key " + event.token);
-        initChatGptService(event.token);
     }
 }
