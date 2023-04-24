@@ -20,6 +20,10 @@ We can do a ton of things with ChatGpt already and having it right up our faces 
 3. Launch the Smart Glasses Chat Gpt app on your phone
 4. 2 new commands will appear
 
+### Listening Mode
+
+Activate by saying the phrase "Hey Computer, Listen", allows the app to listen to your conversationa nd store them for use for future gpt requests
+
 ### Conversation Mode
 
 Activate by saying the phrase "Hey Computer, Conversation", allows you to continuously talk to ChatGpt
@@ -32,6 +36,13 @@ Activate by saying the phrase "Hey Computer, Question", allows you to ask one of
 
 You get your response in a card format using Question Mode, and will be redirected to the home page once it is done.
 In your history, questions asked will persist, it will be recorded as the user has asked a question.
+
+### Example usage flows
+
+- Turn on ```listening mode```, then switch to ```question mode``` whenever you have a question about a previous conversation
+- Turn on ```listening mode```, then switch to ```conversation mode``` to talk to gpt about something continuously based on a previous coonversation
+
+> You also need to manually switch back to listening mode once you are done with your question or conversation with ChatGpt
 
 ## Tech Stack
 
