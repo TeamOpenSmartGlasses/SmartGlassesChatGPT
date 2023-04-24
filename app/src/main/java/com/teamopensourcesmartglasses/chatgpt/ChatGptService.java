@@ -59,12 +59,29 @@ public class ChatGptService extends SmartGlassesAndroidService {
         sgmLib = new SGMLib(this);
 
         // Define commands
-        SGMCommand startChatCommand = new SGMCommand(appName, UUID.fromString("c3b5bbfd-4416-4006-8b40-12346ac3abcf"), new String[] { "conversation" }, "Start a ChatGPT session for your smart glasses!");
-        SGMCommand askGptCommand = new SGMCommand(appName, UUID.fromString("c367ba2d-4416-8768-8b15-19046ac3a2af"), new String[] { "question" }, "Ask a one shot question to ChatGpt based on your existing context");
+        SGMCommand startChatCommand = new SGMCommand(
+                appName,
+                UUID.fromString("c3b5bbfd-4416-4006-8b40-12346ac3abcf"),
+                new String[] { "conversation" },
+                "Start a ChatGPT session for your smart glasses!"
+        );
+        SGMCommand askGptCommand = new SGMCommand(
+                appName,
+                UUID.fromString("c367ba2d-4416-8768-8b15-19046ac3a2af"),
+                new String[] { "question" },
+                "Ask a one shot question to ChatGpt based on your existing context"
+        );
+        SGMCommand recordConversationCommand = new SGMCommand(
+                appName,
+                UUID.fromString("ea89a5ac-6cbd-4867-bd86-1ebce9a27cb3"),
+                new String[] { "listen" },
+                "Record your conversation so you can ask ChatGpt for questions later on"
+        );
 
         //Register the command
         sgmLib.registerCommand(startChatCommand, this::startChatCommandCallback);
-        sgmLib.registerCommand(askGptCommand, this::askGptCommandCommand);
+        sgmLib.registerCommand(askGptCommand, this::askGptCommandCallback);
+        sgmLib.registerCommand(recordConversationCommand, this::recordConversationCommandCallback);
 
         //Subscribe to transcription stream
         sgmLib.subscribe(DataStreamType.TRANSCRIPTION_ENGLISH_STREAM, this::processTranscriptionCallback);
@@ -112,7 +129,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
         resetUserMessage();
     }
 
-    public void askGptCommandCommand(String args, long commandTriggeredTime) {
+    public void askGptCommandCallback(String args, long commandTriggeredTime) {
         Log.d(TAG, "askGptCommandCallback: Ask ChatGPT command callback called");
         Log.d(TAG, "askGptCommandCallback: OpenAiApiKeyProvided:" + openAiKeyProvided);
 
@@ -121,6 +138,20 @@ public class ChatGptService extends SmartGlassesAndroidService {
 
         mode = ChatGptAppMode.Question;
         Log.d(TAG, "askGptCommandCommand: Set app mode to question");
+
+        // we might had been in the middle of a conversation, so when we switch to a question,
+        // we need to reset our messageBuffer
+        resetUserMessage();
+    }
+
+    public void recordConversationCommandCallback(String args, long commandTriggeredTime) {
+        Log.d(TAG, "askGptCommandCallback: Record conversation command callback called");
+
+        // request to be the in focus app so we can continue to show transcripts
+        sgmLib.requestFocus(this::focusChangedCallback);
+
+        mode = ChatGptAppMode.Record;
+        Log.d(TAG, "askGptCommandCommand: Set app mode to record conversation");
 
         // we might had been in the middle of a conversation, so when we switch to a question,
         // we need to reset our messageBuffer
