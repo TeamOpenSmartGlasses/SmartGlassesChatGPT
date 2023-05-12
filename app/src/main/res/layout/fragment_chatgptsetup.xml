@@ -1,84 +1,124 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
+<ScrollView
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".UI.ChatGptSetupFragment">
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
 
-    <EditText
-        android:id="@+id/edittext_input"
-        android:layout_width="305dp"
-        android:layout_height="60dp"
-        android:layout_marginTop="8dp"
-        android:autofillHints="Enter text here"
-        android:hint="@string/hint"
-        android:inputType="text"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textview_first"
-        tools:ignore="LabelFor,MissingConstraints,TextFields" />
-
-    <TextView
-        android:id="@+id/textview_first"
-        android:layout_width="307dp"
-        android:layout_height="45dp"
-        android:layout_marginTop="108dp"
-        android:text="@string/API_key_insert"
-        android:textSize="24sp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.49"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <TextView
-        android:id="@+id/textView_message_sending_method"
-        android:layout_width="280dp"
-        android:layout_height="44dp"
-        android:layout_marginTop="52dp"
-        android:text="@string/message_sending_method"
-        android:textSize="24sp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.496"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/edittext_input" />
-
-    <RadioGroup
-        android:id="@+id/radioGroup_sendMethod"
-        android:layout_width="266dp"
-        android:layout_height="94dp"
-        android:layout_marginTop="4dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textView_message_sending_method">
-
-        <RadioButton
-            android:id="@+id/radioButton_autoSend"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/send_message_automatically_after_i_finish_speaking"
-            tools:layout_editor_absoluteX="88dp" />
-
-        <RadioButton
-            android:id="@+id/radioButton_manualSend"
-            android:layout_width="245dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="@string/send_message_when_i_say_send"
-            tools:layout_editor_absoluteX="88dp" />
-    </RadioGroup>
-
-    <Button
-        android:id="@+id/submit_button"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="52dp"
-        android:text="@string/submit"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/radioGroup_sendMethod"
-        app:layout_constraintVertical_bias="0.0" />
+        android:orientation="vertical">
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="608dp"
+            tools:context=".UI.ChatGptSetupFragment">
+
+            <TextView
+                android:id="@+id/textview_openAiKeyLabel"
+                android:layout_width="309dp"
+                android:layout_height="40dp"
+                android:layout_marginTop="40dp"
+                android:text="@string/API_key_insert"
+                android:textSize="24sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.509"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <EditText
+                android:id="@+id/edittext_input"
+                android:layout_width="308dp"
+                android:layout_height="48dp"
+                android:layout_marginTop="4dp"
+                android:autofillHints="openAiApiKey"
+                android:hint="@string/hint"
+                android:inputType="text"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/textview_openAiKeyLabel"
+                tools:ignore="LabelFor,MissingConstraints,TextFields" />
+
+            <TextView
+                android:id="@+id/textView_systemPrompt"
+                android:layout_width="205dp"
+                android:layout_height="36dp"
+                android:layout_marginTop="44dp"
+                android:text="@string/system_prompt"
+                android:textSize="24sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.256"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/edittext_input" />
+
+            <EditText
+                android:id="@+id/editTextTextMultiLine_systemPrompt"
+                android:layout_width="309dp"
+                android:layout_height="53dp"
+                android:layout_marginTop="4dp"
+                android:autofillHints="system prompt"
+                android:ems="10"
+                android:gravity="start|top"
+                android:hint="@string/enter_your_system_prompt_here"
+                android:inputType="textMultiLine"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.514"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/textView_systemPrompt" />
+
+            <RadioGroup
+                android:id="@+id/radioGroup_sendMethod"
+                android:layout_width="270dp"
+                android:layout_height="111dp"
+                android:layout_marginTop="4dp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.375"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/textView_message_sending_method">
+
+                <RadioButton
+                    android:id="@+id/radioButton_autoSend"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/send_message_automatically_after_i_finish_speaking"
+                    tools:layout_editor_absoluteX="88dp" />
+
+                <RadioButton
+                    android:id="@+id/radioButton_manualSend"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/send_message_when_i_say_send"
+                    tools:layout_editor_absoluteX="88dp" />
+            </RadioGroup>
+
+            <TextView
+                android:id="@+id/textView_message_sending_method"
+                android:layout_width="279dp"
+                android:layout_height="37dp"
+                android:layout_marginTop="48dp"
+                android:text="@string/message_sending_method"
+                android:textSize="24sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.393"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/editTextTextMultiLine_systemPrompt" />
+
+            <Button
+                android:id="@+id/submit_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="52dp"
+                android:text="@string/submit"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/radioGroup_sendMethod"
+                app:layout_constraintVertical_bias="0.0" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </LinearLayout>
+
+</ScrollView>

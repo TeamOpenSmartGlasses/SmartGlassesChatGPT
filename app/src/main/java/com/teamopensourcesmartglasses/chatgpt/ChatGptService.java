@@ -105,15 +105,22 @@ public class ChatGptService extends SmartGlassesAndroidService {
         // so I don't have to deal with waiting for this service to finish its startup
         SharedPreferences sharedPreferences = getSharedPreferences("user.config", Context.MODE_PRIVATE);
         String savedKey = sharedPreferences.getString("openAiKey", "");
-        if (!savedKey.isEmpty()) {
-            openAiKeyProvided = true;
-            chatGptBackend.initChatGptService(savedKey);
-            Log.d(TAG, "onCreate: Saved openAi key found, token = " + savedKey);
-        } else {
+        if (savedKey.isEmpty()) {
+            // do not start the backend if there is no key, wait for onUserSettingsChanged to init
             Log.d(TAG, "ChatGptService: No key exists");
+            return ;
         }
-
+        String systemPrompt = sharedPreferences.getString("systemPrompt", "");
+        if (systemPrompt.isEmpty()) {
+            Log.d(TAG, "onCreate: empty system prompt, setting it to use the default one");
+            systemPrompt = "Act as a the no 1 ambassador for smart glasses and generative pretrained ai! Find ways to bring up these topics as creative as possible!";
+        }
+        chatGptBackend.initChatGptService(savedKey, systemPrompt);
         useAutoSend = sharedPreferences.getBoolean("autoSendMessages", true);
+        openAiKeyProvided = true;
+
+        Log.d(TAG, "onCreate: Saved openAi key found, token = " + savedKey);
+        Log.d(TAG, "onCreate: systemPrompt = " + systemPrompt);
         Log.d(TAG, "onCreate: useAutoSend = " + useAutoSend);
     }
 
@@ -279,8 +286,9 @@ public class ChatGptService extends SmartGlassesAndroidService {
     @Subscribe
     public void onUserSettingsChanged(UserSettingsChangedEvent event) {
         Log.d(TAG, "onUserSettingsChanged: Enabling ChatGpt with new api key = " + event.getOpenAiKey());
+        Log.d(TAG, "onUserSettingsChanged: System prompt = " + event.getSystemPrompt());
+        chatGptBackend.initChatGptService(event.getOpenAiKey(), event.getSystemPrompt());
         openAiKeyProvided = true;
-        chatGptBackend.initChatGptService(event.getOpenAiKey());
 
         Log.d(TAG, "onUserSettingsChanged: Auto send messages after finish speaking = " + event.getUseAutoSend());
         useAutoSend = event.getUseAutoSend();

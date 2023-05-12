@@ -21,7 +21,6 @@ import java.util.stream.Collectors;
 
 public class ChatGptBackend {
     public final String TAG = "SmartGlassesChatGpt_ChatGptBackend";
-    public final String systemMessage = "You are a friendly assistant that likes talking about philosophy and constantly thinks of interesting questions for the user";
     private OpenAiService service;
 //    private final List<ChatMessage> messages = new ArrayList<>();
     private final MessageStore messages;
@@ -39,12 +38,13 @@ public class ChatGptBackend {
 //    }
 
     public ChatGptBackend(){
-        messages = new MessageStore(chatGptMaxTokenSize - maxSingleChatTokenSize, systemMessage);
+        messages = new MessageStore(chatGptMaxTokenSize - maxSingleChatTokenSize);
     }
 
-    public void initChatGptService(String token) {
+    public void initChatGptService(String token, String systemMessage) {
         // Setup ChatGpt with a token
         service = new OpenAiService(token, Duration.ofSeconds(openAiServiceTimeoutDuration));
+        messages.setSystemMessage(systemMessage);
     }
 
     public void sendChatToMemory(String message) {

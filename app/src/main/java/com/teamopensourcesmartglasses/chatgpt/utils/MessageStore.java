@@ -12,20 +12,22 @@ import java.util.Objects;
 
 public class MessageStore {
     private LinkedList<Message> messageQueue = new LinkedList<>();
-    private int totalTokenCount = 0;
+    private int totalTokenCount = 4; // to account for system role extra tokens
     private final int maxTokenCount;
-    private final ChatMessage systemMessage;
+    private ChatMessage systemMessage;
     // CL100K_BASE is for GPT3.5-Turbo
     private final Encoding encoding = Encodings.newDefaultEncodingRegistry().getEncoding(EncodingType.CL100K_BASE);
 
-    public MessageStore(int maxTokenCount, String systemMessage) {
+    public MessageStore(int maxTokenCount) {
         this.maxTokenCount = maxTokenCount;
-        this.systemMessage = new ChatMessage(ChatMessageRole.SYSTEM.value(), systemMessage);
+    }
 
+    public void setSystemMessage(String systemMessage) {
         // We don't need to store the system message into the queue, just the count will do,
-        // so we don't have to handle adding/removing it in the logic
+        // which is handled in resetMessages(), so we don't have to handle adding/removing it in the logic
         // we will add it back when messages are queried
-        this.totalTokenCount += getTokenCount(systemMessage);
+        this.systemMessage = new ChatMessage(ChatMessageRole.SYSTEM.value(), systemMessage);
+        resetMessages();
     }
 
     public void addMessage(String role, String message) {

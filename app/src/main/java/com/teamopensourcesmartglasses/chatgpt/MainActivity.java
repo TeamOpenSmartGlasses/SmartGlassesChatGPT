@@ -33,6 +33,7 @@ public class MainActivity extends AppCompatActivity {
     private EditText openAiKeyText;
     private RadioButton autoSendRadioButton;
     private RadioButton manualSendRadioButton;
+    private EditText systemPromptInput;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,10 +53,15 @@ public class MainActivity extends AppCompatActivity {
         // Show toasts and populate openAI key text field if we have or don't have a key saved
         if (!savedOpenAiKey.isEmpty()) {
             openAiKeyText.setText(savedOpenAiKey);
-            Toast.makeText(this, "OpenAI key found", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "OpenAI key and other app settings found", Toast.LENGTH_LONG).show();
         } else {
             Toast.makeText(this, "No valid OpenAI key found, please add one", Toast.LENGTH_LONG).show();
         }
+
+        systemPromptInput = findViewById(R.id.editTextTextMultiLine_systemPrompt);
+        String defaultSystemPrompt = "Act as a the no 1 ambassador for smart glasses and generative pretrained ai! Find ways to bring up these topics as creative as possible!";
+        String savedSystemPrompt = sharedPreferences.getString("systemPrompt", defaultSystemPrompt);
+        systemPromptInput.setText(savedSystemPrompt);
 
         autoSendRadioButton = findViewById(R.id.radioButton_autoSend);
         manualSendRadioButton = findViewById(R.id.radioButton_manualSend);
@@ -71,11 +77,13 @@ public class MainActivity extends AppCompatActivity {
 
             String openAiApiKey = openAiKeyText.getText().toString().trim();
             editor.putString("openAiKey", openAiApiKey);
+            String systemPrompt = systemPromptInput.getText().toString().trim();
+            editor.putString("systemText", systemPrompt);
             boolean useAutoSendMessages = autoSendRadioButton.isChecked();
             editor.putBoolean("autoSendMessages", useAutoSendMessages);
             editor.apply();
 
-            EventBus.getDefault().post(new UserSettingsChangedEvent(openAiApiKey, useAutoSendMessages));
+            EventBus.getDefault().post(new UserSettingsChangedEvent(openAiApiKey, systemPrompt, useAutoSendMessages));
 
             // Toast to inform user that key has been saved
             Toast.makeText(this, "Overall settings changed", Toast.LENGTH_LONG).show();
