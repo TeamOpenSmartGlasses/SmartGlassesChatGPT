@@ -7,42 +7,78 @@
     android:layout_height="match_parent"
     tools:context=".UI.ChatGptSetupFragment">
 
-    <TextView
-        android:id="@+id/textview_first"
-        android:layout_width="298dp"
-        android:layout_height="48dp"
-        android:layout_marginTop="248dp"
-        android:text="@string/API_key_insert"
-        android:textSize="24sp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.496"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
     <EditText
         android:id="@+id/edittext_input"
         android:layout_width="305dp"
         android:layout_height="60dp"
+        android:layout_marginTop="8dp"
+        android:autofillHints="Enter text here"
         android:hint="@string/hint"
         android:inputType="text"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/textview_first"
-        app:layout_constraintVertical_bias="0.5"
-        tools:ignore="LabelFor,MissingConstraints,TextFields"
-        tools:layout_editor_absoluteY="322dp"
-        android:autofillHints="Enter text here" />
+        tools:ignore="LabelFor,MissingConstraints,TextFields" />
+
+    <TextView
+        android:id="@+id/textview_first"
+        android:layout_width="307dp"
+        android:layout_height="45dp"
+        android:layout_marginTop="108dp"
+        android:text="@string/API_key_insert"
+        android:textSize="24sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.49"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/textView_message_sending_method"
+        android:layout_width="280dp"
+        android:layout_height="44dp"
+        android:layout_marginTop="52dp"
+        android:text="@string/message_sending_method"
+        android:textSize="24sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.496"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/edittext_input" />
+
+    <RadioGroup
+        android:id="@+id/radioGroup_sendMethod"
+        android:layout_width="266dp"
+        android:layout_height="94dp"
+        android:layout_marginTop="4dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textView_message_sending_method">
+
+        <RadioButton
+            android:id="@+id/radioButton_autoSend"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/send_message_automatically_after_i_finish_speaking"
+            tools:layout_editor_absoluteX="88dp" />
+
+        <RadioButton
+            android:id="@+id/radioButton_manualSend"
+            android:layout_width="245dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/send_message_when_i_say_send"
+            tools:layout_editor_absoluteX="88dp" />
+    </RadioGroup>
 
     <Button
         android:id="@+id/submit_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="52dp"
         android:text="@string/submit"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/edittext_input"
-        />
+        app:layout_constraintTop_toBottomOf="@+id/radioGroup_sendMethod"
+        app:layout_constraintVertical_bias="0.0" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

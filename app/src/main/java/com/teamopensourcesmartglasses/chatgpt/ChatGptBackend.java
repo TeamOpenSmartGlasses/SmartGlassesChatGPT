@@ -4,7 +4,6 @@ import android.util.Log;
 
 import com.teamopensourcesmartglasses.chatgpt.events.ChatErrorEvent;
 import com.teamopensourcesmartglasses.chatgpt.events.ChatReceivedEvent;
-import com.teamopensourcesmartglasses.chatgpt.events.ClearContextRequestEvent;
 import com.teamopensourcesmartglasses.chatgpt.events.QuestionAnswerReceivedEvent;
 import com.teamopensourcesmartglasses.chatgpt.utils.MessageStore;
 import com.theokanning.openai.completion.chat.ChatCompletionChoice;
@@ -15,10 +14,8 @@ import com.theokanning.openai.completion.chat.ChatMessageRole;
 import com.theokanning.openai.service.OpenAiService;
 
 import org.greenrobot.eventbus.EventBus;
-import org.greenrobot.eventbus.Subscribe;
 
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -42,7 +39,6 @@ public class ChatGptBackend {
 //    }
 
     public ChatGptBackend(){
-        EventBus.getDefault().register(this);
         messages = new MessageStore(chatGptMaxTokenSize - maxSingleChatTokenSize, systemMessage);
     }
 
@@ -71,6 +67,7 @@ public class ChatGptBackend {
             return;
         }
 
+        // If there is still words from a previous record session, then add them into the messageQueue
         if (recordingBuffer.length() != 0) {
             messages.addMessage(ChatMessageRole.USER.value(), recordingBuffer.toString());
             recordingBuffer = new StringBuffer();
@@ -189,8 +186,7 @@ public class ChatGptBackend {
         }
     }
 
-    @Subscribe
-    public void onClearConversationContext(ClearContextRequestEvent e) {
+    public void clearConversationContext() {
         messages.resetMessages();
     }
 }

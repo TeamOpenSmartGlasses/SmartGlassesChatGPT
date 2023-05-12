@@ -11,13 +11,13 @@ import com.teamopensmartglasses.sgmlib.SGMLib;
 import com.teamopensmartglasses.sgmlib.SmartGlassesAndroidService;
 import com.teamopensourcesmartglasses.chatgpt.events.ChatErrorEvent;
 import com.teamopensourcesmartglasses.chatgpt.events.ChatReceivedEvent;
-import com.teamopensourcesmartglasses.chatgpt.events.ClearContextRequestEvent;
-import com.teamopensourcesmartglasses.chatgpt.events.OpenAIApiKeyProvidedEvent;
 import com.teamopensourcesmartglasses.chatgpt.events.QuestionAnswerReceivedEvent;
+import com.teamopensourcesmartglasses.chatgpt.events.UserSettingsChangedEvent;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -39,6 +39,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
     private Future<?> future;
     private boolean openAiKeyProvided = false;
     private ChatGptAppMode mode = ChatGptAppMode.Inactive;
+    private boolean useAutoSend;
 
     public ChatGptService(){
         super(MainActivity.class,
@@ -103,13 +104,17 @@ public class ChatGptService extends SmartGlassesAndroidService {
         // Putting a separate sharedPreferences here instead of through the event bus from mainActivity
         // so I don't have to deal with waiting for this service to finish its startup
         SharedPreferences sharedPreferences = getSharedPreferences("user.config", Context.MODE_PRIVATE);
-        if (sharedPreferences.contains("openAiKey")) {
-            String savedKey = sharedPreferences.getString("openAiKey", "");
+        String savedKey = sharedPreferences.getString("openAiKey", "");
+        if (!savedKey.isEmpty()) {
             openAiKeyProvided = true;
             chatGptBackend.initChatGptService(savedKey);
+            Log.d(TAG, "onCreate: Saved openAi key found, token = " + savedKey);
         } else {
             Log.d(TAG, "ChatGptService: No key exists");
         }
+
+        useAutoSend = sharedPreferences.getBoolean("autoSendMessages", true);
+        Log.d(TAG, "onCreate: useAutoSend = " + useAutoSend);
     }
 
     @Override
@@ -170,8 +175,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
         // request to be the in focus app so we can continue to show transcripts
         sgmLib.requestFocus(this::focusChangedCallback);
 
-        // send an event to clear context
-        EventBus.getDefault().post(new ClearContextRequestEvent());
+        chatGptBackend.clearConversationContext();
 
         // we might had been in the middle of a conversation, so when we switch to a question,
         // we need to reset our messageBuffer
@@ -216,23 +220,32 @@ public class ChatGptService extends SmartGlassesAndroidService {
             }
             sgmLib.pushScrollingText(transcript);
 
-            // Cancel the scheduled job if we get a new transcript
-            if (future != null) {
-                future.cancel(false);
-                Log.d(TAG, "processTranscriptionCallback: Cancelled scheduled job");
-            }
-
-            future = executorService.schedule(() -> {
-                String message = messageBuffer.toString();
-                
-                if (!message.isEmpty()) {
-                    chatGptBackend.sendChatToGpt(messageBuffer.toString(), mode);
-                    messageBuffer = new StringBuffer();
-                    Log.d(TAG, "processTranscriptionCallback: Ran scheduled job and sent message");
-                } else {
-                    Log.d(TAG, "processTranscriptionCallback: Message is empty");
+            if (useAutoSend) {
+                // Cancel the scheduled job if we get a new transcript
+                if (future != null) {
+                    future.cancel(false);
+                    Log.d(TAG, "processTranscriptionCallback: Cancelled scheduled job");
                 }
-            }, 7, TimeUnit.SECONDS);
+                future = executorService.schedule(this::sendMessageToChatGpt, 7, TimeUnit.SECONDS);
+            } else {
+                if (Objects.equals(transcript, "send")) {
+                    sendMessageToChatGpt();
+                } else {
+                    messageBuffer.append(transcript);
+                    messageBuffer.append(" ");
+                }
+            }
+        }
+    }
+
+    private void sendMessageToChatGpt() {
+        String message = messageBuffer.toString();
+        if (!message.isEmpty()) {
+            chatGptBackend.sendChatToGpt(message, mode);
+            messageBuffer = new StringBuffer();
+            Log.d(TAG, "processTranscriptionCallback: Ran scheduled job and sent message");
+        } else {
+            Log.d(TAG, "processTranscriptionCallback: Can't send because message is empty");
         }
     }
 
@@ -252,7 +265,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
     }
 
     @Subscribe
-    public void onQuestionAnswerReceivedEvent(QuestionAnswerReceivedEvent event) {
+    public void onQuestionAnswerReceived(QuestionAnswerReceivedEvent event) {
         String body = "Q: " + event.getQuestion() + "\n\n" + "A: " + event.getAnswer();
         sgmLib.sendReferenceCard("AskGpt", body);
         mode = ChatGptAppMode.Inactive;
@@ -264,9 +277,12 @@ public class ChatGptService extends SmartGlassesAndroidService {
     }
 
     @Subscribe
-    public void onOpenAIApiKeyProvided(OpenAIApiKeyProvidedEvent event) {
-        Log.d(TAG, "onOpenAIApiKeyProvided: Enabling ChatGpt command");
+    public void onUserSettingsChanged(UserSettingsChangedEvent event) {
+        Log.d(TAG, "onUserSettingsChanged: Enabling ChatGpt with new api key = " + event.getOpenAiKey());
         openAiKeyProvided = true;
-        chatGptBackend.initChatGptService(event.token);
+        chatGptBackend.initChatGptService(event.getOpenAiKey());
+
+        Log.d(TAG, "onUserSettingsChanged: Auto send messages after finish speaking = " + event.getUseAutoSend());
+        useAutoSend = event.getUseAutoSend();
     }
 }

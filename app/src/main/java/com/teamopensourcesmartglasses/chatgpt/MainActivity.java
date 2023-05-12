@@ -15,10 +15,12 @@ import android.util.Log;
 
 import org.greenrobot.eventbus.EventBus;
 import com.teamopensourcesmartglasses.chatgpt.databinding.ActivityMainBinding;
-import com.teamopensourcesmartglasses.chatgpt.events.OpenAIApiKeyProvidedEvent;
+import com.teamopensourcesmartglasses.chatgpt.events.UserSettingsChangedEvent;
 
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.Toast;
 
 public class MainActivity extends AppCompatActivity {
@@ -28,7 +30,9 @@ public class MainActivity extends AppCompatActivity {
     public ChatGptService mService;
     private ActivityMainBinding binding;
     private Button submitButton;
-    EditText messageEditText;
+    private EditText openAiKeyText;
+    private RadioButton autoSendRadioButton;
+    private RadioButton manualSendRadioButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,29 +44,41 @@ public class MainActivity extends AppCompatActivity {
 
         startChatGptService();
 
-        // Show toasts if we have or don't have a key saved
         SharedPreferences sharedPreferences = getSharedPreferences("user.config", Context.MODE_PRIVATE);
-        if (sharedPreferences.contains("openAiKey")) {
-            String savedKey = sharedPreferences.getString("openAiKey", "");
+
+        // Display our previously saved settings
+        openAiKeyText = findViewById(R.id.edittext_input);
+        String savedOpenAiKey = sharedPreferences.getString("openAiKey", "");
+        // Show toasts and populate openAI key text field if we have or don't have a key saved
+        if (!savedOpenAiKey.isEmpty()) {
+            openAiKeyText.setText(savedOpenAiKey);
             Toast.makeText(this, "OpenAI key found", Toast.LENGTH_LONG).show();
         } else {
-            Toast.makeText(this, "No OpenAI key found, please add one", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "No valid OpenAI key found, please add one", Toast.LENGTH_LONG).show();
         }
 
+        autoSendRadioButton = findViewById(R.id.radioButton_autoSend);
+        manualSendRadioButton = findViewById(R.id.radioButton_manualSend);
+        boolean useAutoSendMethod = sharedPreferences.getBoolean("autoSendMessages", true);
+        autoSendRadioButton.setChecked(useAutoSendMethod);
+        manualSendRadioButton.setChecked(!useAutoSendMethod);
+
         // UI handlers
-        messageEditText = findViewById(R.id.edittext_input);
         submitButton = findViewById(R.id.submit_button);
         submitButton.setOnClickListener((v) -> {
-            String apiKey = messageEditText.getText().toString().trim();
-            messageEditText.setText(""); // Empty text
-
             // Save to shared preference
             SharedPreferences.Editor editor = sharedPreferences.edit();
-            editor.putString("openAiKey", apiKey);
+
+            String openAiApiKey = openAiKeyText.getText().toString().trim();
+            editor.putString("openAiKey", openAiApiKey);
+            boolean useAutoSendMessages = autoSendRadioButton.isChecked();
+            editor.putBoolean("autoSendMessages", useAutoSendMessages);
             editor.apply();
-            EventBus.getDefault().post(new OpenAIApiKeyProvidedEvent(apiKey));
+
+            EventBus.getDefault().post(new UserSettingsChangedEvent(openAiApiKey, useAutoSendMessages));
 
             // Toast to inform user that key has been saved
+            Toast.makeText(this, "Overall settings changed", Toast.LENGTH_LONG).show();
             Toast.makeText(this, "OpenAi key saved for future sessions", Toast.LENGTH_LONG).show();
         });
     }
