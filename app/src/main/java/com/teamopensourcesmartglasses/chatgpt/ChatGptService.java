@@ -82,7 +82,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
         SGMCommand clearContextCommand = new SGMCommand(
                 appName,
                 UUID.fromString("eta9a5ac-645d-0967-bd86-1eb1e1b78cb3"),
-                new String[] { "listen" },
+                new String[] { "clear" },
                 "Clear your conversation context"
         );
 
