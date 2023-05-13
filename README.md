@@ -22,15 +22,19 @@ We can do a ton of things with ChatGpt already and having it right up our faces 
 
 ### Listening Mode
 
-Activate by saying the phrase "Hey Computer, Listen", allows the app to listen to your conversation nd store them for use for future gpt requests
+Activate by saying the phrase `Hey Computer, Listen`, allows the app to listen to your conversation nd store them for use for future gpt requests
 
 ### Conversation Mode
 
-Activate by saying the phrase "Hey Computer, Conversation", allows you to continuously talk to ChatGpt
+Activate by saying the phrase `Hey Computer, Conversation`, allows you to continuously talk to ChatGpt
 
 ### Question Mode
 
-Activate by saying the phrase "Hey Computer, Question", allows you to ask one off questions with ChatGpt
+Activate by saying the phrase `Hey Computer, Question`, allows you to ask one off questions with ChatGpt
+
+### Clear Context
+
+Resets your entire chat
 
 ### Difference between Conversation Mode and Question Mode
 
@@ -43,6 +47,11 @@ In your history, questions asked will persist, it will be recorded as the user h
 - Turn on ```listening mode```, then switch to ```conversation mode``` to talk to gpt about something continuously based on a previous conversation
 
 > You also need to manually switch back to listening mode once you are done with your question or conversation with ChatGpt
+
+### Customization
+
+- System prompt, this defines the characteristics of the bot, and will never be removed from the context, so customize your own bot like `Imagine if you are Shakespeare`
+- Automatically send messages after `7` seconds or manual mode where you say `send message`
 
 ## Tech Stack
 
@@ -62,6 +71,10 @@ For our app, its the same, the main thing you might want to look at is the
 
 - ```ChatGptBackend.java``` file for handling the integration logic with the OpenAi Service
 - ```ChatGptService.java``` file for handling the sgmLib integration logic
+
+## Future roadmap
+
+- Add in export or save chat features (or just turn the app into a general intelligent assistant using langchain)
 
 ## License
 
