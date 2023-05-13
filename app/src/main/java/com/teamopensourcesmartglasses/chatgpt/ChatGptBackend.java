@@ -25,9 +25,9 @@ public class ChatGptBackend {
 //    private final List<ChatMessage> messages = new ArrayList<>();
     private final MessageStore messages;
     // private StringBuffer responseMessageBuffer = new StringBuffer();
-    private final int chatGptMaxTokenSize = 126;
-    private final int maxSingleChatTokenSize = 15;
-    private final int messageDefaultWordsChunkSize = 20;
+    private final int chatGptMaxTokenSize = 3000; // let's play safe and use the 3k out of 4096
+    private final int maxSingleChatTokenSize = 100;
+    private final int messageDefaultWordsChunkSize = 100;
     private final int openAiServiceTimeoutDuration = 110;
     private StringBuffer recordingBuffer = new StringBuffer();
 
