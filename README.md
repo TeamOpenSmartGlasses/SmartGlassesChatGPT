@@ -22,7 +22,7 @@ We can do a ton of things with ChatGpt already and having it right up our faces 
 
 ### Listening Mode
 
-Activate by saying the phrase "Hey Computer, Listen", allows the app to listen to your conversationa nd store them for use for future gpt requests
+Activate by saying the phrase "Hey Computer, Listen", allows the app to listen to your conversation nd store them for use for future gpt requests
 
 ### Conversation Mode
 
@@ -40,7 +40,7 @@ In your history, questions asked will persist, it will be recorded as the user h
 ### Example usage flows
 
 - Turn on ```listening mode```, then switch to ```question mode``` whenever you have a question about a previous conversation
-- Turn on ```listening mode```, then switch to ```conversation mode``` to talk to gpt about something continuously based on a previous coonversation
+- Turn on ```listening mode```, then switch to ```conversation mode``` to talk to gpt about something continuously based on a previous conversation
 
 > You also need to manually switch back to listening mode once you are done with your question or conversation with ChatGpt
 
