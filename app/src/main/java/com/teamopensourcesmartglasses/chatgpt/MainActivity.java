@@ -86,7 +86,7 @@ public class MainActivity extends AppCompatActivity {
             if (systemPrompt.isEmpty()) {
                 Toast.makeText(this, "System prompt should not be empty", Toast.LENGTH_LONG).show();
             }
-            editor.putString("systemText", systemPrompt);
+            editor.putString("systemPrompt", systemPrompt);
 
             boolean useAutoSendMessages = autoSendRadioButton.isChecked();
             editor.putBoolean("autoSendMessages", useAutoSendMessages);
