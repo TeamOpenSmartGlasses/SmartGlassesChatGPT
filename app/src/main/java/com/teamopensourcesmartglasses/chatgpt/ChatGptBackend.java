@@ -115,13 +115,8 @@ public class ChatGptBackend {
                                                         .map(ChatCompletionChoice::getMessage)
                                                         .collect(Collectors.toList());
 
-                    // Make sure there is still space for next messages
-                    // Just use a simple approximation, if current request is more than 75% of max, we clear half of it
-                    long tokensUsed = result.getUsage().getTotalTokens();
-                    Log.d(TAG, "run: tokens used: " + tokensUsed + "/" + chatGptMaxTokenSize);
-                    if (tokensUsed >= chatGptMaxTokenSize * 0.75) {
-                        clearSomeMessages();
-                    }
+//                    long tokensUsed = result.getUsage().getTotalTokens();
+//                    Log.d(TAG, "run: tokens used: " + tokensUsed + "/" + chatGptMaxTokenSize);
 
                     // Send a chat received response
                     ChatMessage response = responses.get(0);
