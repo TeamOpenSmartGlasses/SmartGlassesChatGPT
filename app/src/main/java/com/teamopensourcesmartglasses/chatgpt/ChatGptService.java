@@ -11,12 +11,14 @@ import com.teamopensmartglasses.sgmlib.SGMLib;
 import com.teamopensmartglasses.sgmlib.SmartGlassesAndroidService;
 import com.teamopensourcesmartglasses.chatgpt.events.ChatErrorEvent;
 import com.teamopensourcesmartglasses.chatgpt.events.ChatReceivedEvent;
-import com.teamopensourcesmartglasses.chatgpt.events.OpenAIApiKeyProvidedEvent;
 import com.teamopensourcesmartglasses.chatgpt.events.QuestionAnswerReceivedEvent;
+import com.teamopensourcesmartglasses.chatgpt.events.UserSettingsChangedEvent;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 
+import java.util.ArrayList;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -38,6 +40,8 @@ public class ChatGptService extends SmartGlassesAndroidService {
     private Future<?> future;
     private boolean openAiKeyProvided = false;
     private ChatGptAppMode mode = ChatGptAppMode.Inactive;
+    private boolean useAutoSend;
+    private ArrayList<String> commandWords;
 
     public ChatGptService(){
         super(MainActivity.class,
@@ -71,6 +75,12 @@ public class ChatGptService extends SmartGlassesAndroidService {
                 new String[] { "question" },
                 "Ask a one shot question to ChatGpt based on your existing context"
         );
+        SGMCommand clearContextCommand = new SGMCommand(
+                appName,
+                UUID.fromString("2b8d1ba0-f114-11ed-a05b-0242ac120003"),
+                new String[] { "clear" },
+                "Clear your conversation context"
+        );
         SGMCommand recordConversationCommand = new SGMCommand(
                 appName,
                 UUID.fromString("ea89a5ac-6cbd-4867-bd86-1ebce9a27cb3"),
@@ -78,10 +88,18 @@ public class ChatGptService extends SmartGlassesAndroidService {
                 "Record your conversation so you can ask ChatGpt for questions later on"
         );
 
-        //Register the command
+        // Save all the wake words so we can detect and remove them during transcriptions with just 1 word
+        commandWords = new ArrayList<>();
+        commandWords.addAll(startChatCommand.getPhrases());
+        commandWords.addAll(askGptCommand.getPhrases());
+        commandWords.addAll(clearContextCommand.getPhrases());
+        commandWords.addAll(recordConversationCommand.getPhrases());
+
+        // Register the command
         sgmLib.registerCommand(startChatCommand, this::startChatCommandCallback);
         sgmLib.registerCommand(askGptCommand, this::askGptCommandCallback);
         sgmLib.registerCommand(recordConversationCommand, this::recordConversationCommandCallback);
+        sgmLib.registerCommand(clearContextCommand, this::clearConversationContextCommandCallback);
 
         //Subscribe to transcription stream
         sgmLib.subscribe(DataStreamType.TRANSCRIPTION_ENGLISH_STREAM, this::processTranscriptionCallback);
@@ -95,15 +113,24 @@ public class ChatGptService extends SmartGlassesAndroidService {
         // Putting a separate sharedPreferences here instead of through the event bus from mainActivity
         // so I don't have to deal with waiting for this service to finish its startup
         SharedPreferences sharedPreferences = getSharedPreferences("user.config", Context.MODE_PRIVATE);
-        if (sharedPreferences.contains("openAiKey")) {
-            String savedKey = sharedPreferences.getString("openAiKey", "");
-            openAiKeyProvided = true;
-            chatGptBackend.initChatGptService(savedKey);
-        } else {
+        String savedKey = sharedPreferences.getString("openAiKey", "");
+        if (savedKey.isEmpty()) {
+            // do not start the backend if there is no key, wait for onUserSettingsChanged to init
             Log.d(TAG, "ChatGptService: No key exists");
+            return ;
         }
+        String systemPrompt = sharedPreferences.getString("systemPrompt", "");
+        if (systemPrompt.isEmpty()) {
+            Log.d(TAG, "onCreate: empty system prompt, setting it to use the default one");
+            systemPrompt = "Act as a the no 1 ambassador for smart glasses and generative pretrained ai! Find ways to bring up these topics as creative as possible!";
+        }
+        chatGptBackend.initChatGptService(savedKey, systemPrompt);
+        useAutoSend = sharedPreferences.getBoolean("autoSendMessages", true);
+        openAiKeyProvided = true;
 
-        // startTimer();
+        Log.d(TAG, "onCreate: Saved openAi key found, token = " + savedKey);
+        Log.d(TAG, "onCreate: systemPrompt = " + systemPrompt);
+        Log.d(TAG, "onCreate: useAutoSend = " + useAutoSend);
     }
 
     @Override
@@ -158,6 +185,19 @@ public class ChatGptService extends SmartGlassesAndroidService {
         resetUserMessage();
     }
 
+    public void clearConversationContextCommandCallback(String args, long commandTriggeredTime) {
+        Log.d(TAG, "askGptCommandCallback: Reset conversation context");
+
+        sgmLib.sendReferenceCard("Clear context", "Cleared conversation context");
+        mode = ChatGptAppMode.Inactive;
+
+        chatGptBackend.clearConversationContext();
+
+        // we might had been in the middle of a conversation, so when we switch to a question,
+        // we need to reset our messageBuffer
+        resetUserMessage();
+    }
+
     public void focusChangedCallback(FocusStates focusState){
         Log.d(TAG, "Focus callback called with state: " + focusState);
         this.focusState = focusState;
@@ -177,36 +217,57 @@ public class ChatGptService extends SmartGlassesAndroidService {
             return;
         }
 
+        // We can ignore command phrases so it is more accurate, tested that this works
+        if (isFinal && commandWords.contains(transcript)) {
+            return;
+        }
+
+        // If its recording we just save it to memory without even the need to finish the sentence
+        // It will be saved as a ChatMessage
+        if (isFinal && mode == ChatGptAppMode.Record) {
+            chatGptBackend.sendChatToMemory(transcript);
+            sgmLib.pushScrollingText(transcript);
+        }
+
         // We want to send our message in our message buffer when we stop speaking for like 9 seconds
         // If the transcript is finalized, then we add it to our buffer, and reset our timer
-        if (isFinal && openAiKeyProvided){
+        if (isFinal && mode != ChatGptAppMode.Record && openAiKeyProvided){
             Log.d(TAG, "processTranscriptionCallback: " + transcript);
-            messageBuffer.append(transcript);
-            messageBuffer.append(" ");
+
+            if (useAutoSend) {
+                messageBuffer.append(transcript);
+                messageBuffer.append(" ");
+                // Cancel the scheduled job if we get a new transcript
+                if (future != null) {
+                    future.cancel(false);
+                    Log.d(TAG, "processTranscriptionCallback: Cancelled scheduled job");
+                }
+                future = executorService.schedule(this::sendMessageToChatGpt, 7, TimeUnit.SECONDS);
+            } else {
+                if (Objects.equals(transcript, "send message")) {
+                    sendMessageToChatGpt();
+                } else {
+                    messageBuffer.append(transcript);
+                    messageBuffer.append(" ");
+                }
+            }
 
             if (!userTurnLabelSet) {
                 transcript = "User: " + transcript;
                 userTurnLabelSet = true;
             }
             sgmLib.pushScrollingText(transcript);
+        }
+    }
 
-            // Cancel the scheduled job if we get a new transcript
-            if (future != null) {
-                future.cancel(false);
-                Log.d(TAG, "processTranscriptionCallback: Cancelled scheduled job");
-            }
-
-            future = executorService.schedule(() -> {
-                String message = messageBuffer.toString();
-                
-                if (!message.isEmpty()) {
-                    chatGptBackend.sendChat(messageBuffer.toString(), mode);
-                    messageBuffer = new StringBuffer();
-                    Log.d(TAG, "processTranscriptionCallback: Ran scheduled job and sent message");
-                } else {
-                    Log.d(TAG, "processTranscriptionCallback: Message is empty");
-                }
-            }, 10, TimeUnit.SECONDS);
+    private void sendMessageToChatGpt() {
+        String message = messageBuffer.toString();
+        if (!message.isEmpty()) {
+            chatGptBackend.sendChatToGpt(message, mode);
+            messageBuffer = new StringBuffer();
+            Log.d(TAG, "processTranscriptionCallback: Ran scheduled job and sent message");
+        } else {
+            Log.d(TAG, "processTranscriptionCallback: Can't send because message is empty");
         }
     }
 
@@ -226,9 +287,10 @@ public class ChatGptService extends SmartGlassesAndroidService {
     }
 
     @Subscribe
-    public void onQuestionAnswerReceivedEvent(QuestionAnswerReceivedEvent event) {
+    public void onQuestionAnswerReceived(QuestionAnswerReceivedEvent event) {
         String body = "Q: " + event.getQuestion() + "\n\n" + "A: " + event.getAnswer();
         sgmLib.sendReferenceCard("AskGpt", body);
+        mode = ChatGptAppMode.Inactive;
     }
 
     @Subscribe
@@ -237,9 +299,13 @@ public class ChatGptService extends SmartGlassesAndroidService {
     }
 
     @Subscribe
-    public void onOpenAIApiKeyProvided(OpenAIApiKeyProvidedEvent event) {
-        Log.d(TAG, "onOpenAIApiKeyProvided: Enabling ChatGpt command");
+    public void onUserSettingsChanged(UserSettingsChangedEvent event) {
+        Log.d(TAG, "onUserSettingsChanged: Enabling ChatGpt with new api key = " + event.getOpenAiKey());
+        Log.d(TAG, "onUserSettingsChanged: System prompt = " + event.getSystemPrompt());
+        chatGptBackend.initChatGptService(event.getOpenAiKey(), event.getSystemPrompt());
         openAiKeyProvided = true;
-        chatGptBackend.initChatGptService(event.token);
+
+        Log.d(TAG, "onUserSettingsChanged: Auto send messages after finish speaking = " + event.getUseAutoSend());
+        useAutoSend = event.getUseAutoSend();
     }
 }
