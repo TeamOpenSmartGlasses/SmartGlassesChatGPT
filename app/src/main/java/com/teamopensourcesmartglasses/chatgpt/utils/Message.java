@@ -1,4 +1,6 @@
 package com.teamopensourcesmartglasses.chatgpt.utils;
+import androidx.annotation.NonNull;
+
 import com.theokanning.openai.completion.chat.ChatMessage;
 
 import java.time.LocalDateTime;
@@ -28,5 +30,11 @@ class Message {
 
     public ChatMessage getChatMessage() {
         return message;
+    }
+
+    @NonNull
+    @Override
+    public String toString() {
+        return tokenCount + " " + message.toString();
     }
 }

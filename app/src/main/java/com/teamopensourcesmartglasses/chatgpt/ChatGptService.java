@@ -17,6 +17,7 @@ import com.teamopensourcesmartglasses.chatgpt.events.UserSettingsChangedEvent;
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 
+import java.util.ArrayList;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.Executors;
@@ -40,6 +41,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
     private boolean openAiKeyProvided = false;
     private ChatGptAppMode mode = ChatGptAppMode.Inactive;
     private boolean useAutoSend;
+    private ArrayList<String> commandWords;
 
     public ChatGptService(){
         super(MainActivity.class,
@@ -73,20 +75,27 @@ public class ChatGptService extends SmartGlassesAndroidService {
                 new String[] { "question" },
                 "Ask a one shot question to ChatGpt based on your existing context"
         );
+        SGMCommand clearContextCommand = new SGMCommand(
+                appName,
+                UUID.fromString("2b8d1ba0-f114-11ed-a05b-0242ac120003"),
+                new String[] { "clear" },
+                "Clear your conversation context"
+        );
         SGMCommand recordConversationCommand = new SGMCommand(
                 appName,
                 UUID.fromString("ea89a5ac-6cbd-4867-bd86-1ebce9a27cb3"),
                 new String[] { "listen" },
                 "Record your conversation so you can ask ChatGpt for questions later on"
         );
-        SGMCommand clearContextCommand = new SGMCommand(
-                appName,
-                UUID.fromString("eta9a5ac-645d-0967-bd86-1eb1e1b78cb3"),
-                new String[] { "clear" },
-                "Clear your conversation context"
-        );
 
-        //Register the command
+        // Save all the wake words so we can detect and remove them during transcriptions with just 1 word
+        commandWords = new ArrayList<>();
+        commandWords.addAll(startChatCommand.getPhrases());
+        commandWords.addAll(askGptCommand.getPhrases());
+        commandWords.addAll(clearContextCommand.getPhrases());
+        commandWords.addAll(recordConversationCommand.getPhrases());
+
+        // Register the command
         sgmLib.registerCommand(startChatCommand, this::startChatCommandCallback);
         sgmLib.registerCommand(askGptCommand, this::askGptCommandCallback);
         sgmLib.registerCommand(recordConversationCommand, this::recordConversationCommandCallback);
@@ -179,8 +188,8 @@ public class ChatGptService extends SmartGlassesAndroidService {
     public void clearConversationContextCommandCallback(String args, long commandTriggeredTime) {
         Log.d(TAG, "askGptCommandCallback: Reset conversation context");
 
-        // request to be the in focus app so we can continue to show transcripts
-        sgmLib.requestFocus(this::focusChangedCallback);
+        sgmLib.sendReferenceCard("Clear context", "Cleared conversation context");
+        mode = ChatGptAppMode.Inactive;
 
         chatGptBackend.clearConversationContext();
 
@@ -208,26 +217,26 @@ public class ChatGptService extends SmartGlassesAndroidService {
             return;
         }
 
+        // We can ignore command phrases so it is more accurate, tested that this works
+        if (isFinal && commandWords.contains(transcript)) {
+            return;
+        }
+
         // If its recording we just save it to memory without even the need to finish the sentence
         // It will be saved as a ChatMessage
         if (isFinal && mode == ChatGptAppMode.Record) {
             chatGptBackend.sendChatToMemory(transcript);
+            sgmLib.pushScrollingText(transcript);
         }
 
         // We want to send our message in our message buffer when we stop speaking for like 9 seconds
         // If the transcript is finalized, then we add it to our buffer, and reset our timer
         if (isFinal && mode != ChatGptAppMode.Record && openAiKeyProvided){
             Log.d(TAG, "processTranscriptionCallback: " + transcript);
-            messageBuffer.append(transcript);
-            messageBuffer.append(" ");
-
-            if (!userTurnLabelSet) {
-                transcript = "User: " + transcript;
-                userTurnLabelSet = true;
-            }
-            sgmLib.pushScrollingText(transcript);
 
             if (useAutoSend) {
+                messageBuffer.append(transcript);
+                messageBuffer.append(" ");
                 // Cancel the scheduled job if we get a new transcript
                 if (future != null) {
                     future.cancel(false);
@@ -235,13 +244,19 @@ public class ChatGptService extends SmartGlassesAndroidService {
                 }
                 future = executorService.schedule(this::sendMessageToChatGpt, 7, TimeUnit.SECONDS);
             } else {
-                if (Objects.equals(transcript, "send")) {
+                if (Objects.equals(transcript, "send message")) {
                     sendMessageToChatGpt();
                 } else {
                     messageBuffer.append(transcript);
                     messageBuffer.append(" ");
                 }
             }
+
+            if (!userTurnLabelSet) {
+                transcript = "User: " + transcript;
+                userTurnLabelSet = true;
+            }
+            sgmLib.pushScrollingText(transcript);
         }
     }
 

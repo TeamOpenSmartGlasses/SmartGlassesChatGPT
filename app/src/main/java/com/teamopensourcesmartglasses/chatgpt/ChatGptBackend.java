@@ -25,9 +25,9 @@ public class ChatGptBackend {
 //    private final List<ChatMessage> messages = new ArrayList<>();
     private final MessageStore messages;
     // private StringBuffer responseMessageBuffer = new StringBuffer();
-    private final int chatGptMaxTokenSize = 4096;
-    private final int maxSingleChatTokenSize = 200;
-    private final int messageDefaultWordsChunkSize = 100;
+    private final int chatGptMaxTokenSize = 126;
+    private final int maxSingleChatTokenSize = 15;
+    private final int messageDefaultWordsChunkSize = 20;
     private final int openAiServiceTimeoutDuration = 110;
     private StringBuffer recordingBuffer = new StringBuffer();
 
@@ -53,8 +53,10 @@ public class ChatGptBackend {
         Log.d(TAG, "sendChat: In record mode");
         recordingBuffer.append(message);
         recordingBuffer.append(" ");
+        Log.d(TAG, "sendChatToMemory: " + recordingBuffer);
 
         if (getWordCount(recordingBuffer.toString()) > messageDefaultWordsChunkSize) {
+            Log.d(TAG, "sendChatToMemory: size is big enough to be a chunk");
             messages.addMessage(ChatMessageRole.USER.value(), recordingBuffer.toString());
             recordingBuffer = new StringBuffer();
         }
@@ -69,6 +71,7 @@ public class ChatGptBackend {
 
         // If there is still words from a previous record session, then add them into the messageQueue
         if (recordingBuffer.length() != 0) {
+            Log.d(TAG, "sendChatToGpt: There are still words from a recording, adding them to chunk");
             messages.addMessage(ChatMessageRole.USER.value(), recordingBuffer.toString());
             recordingBuffer = new StringBuffer();
         }
@@ -141,7 +144,7 @@ public class ChatGptBackend {
                     }
                 } catch (Exception e){
                     Log.d(TAG, "run: encountered error: " + e.getMessage());
-                    EventBus.getDefault().post(new ChatErrorEvent(e.getMessage()));
+                    EventBus.getDefault().post(new ChatErrorEvent("Check if you had set your key correctly or view the error below" + e.getMessage()));
                 }
 
 //                Log.d(TAG, "Streaming chat completion");

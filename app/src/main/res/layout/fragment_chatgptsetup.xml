@@ -13,23 +13,36 @@
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
-            android:layout_height="608dp"
+            android:layout_height="730dp"
             tools:context=".UI.ChatGptSetupFragment">
 
             <TextView
-                android:id="@+id/textview_openAiKeyLabel"
-                android:layout_width="309dp"
-                android:layout_height="40dp"
-                android:layout_marginTop="40dp"
-                android:text="@string/API_key_insert"
+                android:id="@+id/textView"
+                android:layout_width="143dp"
+                android:layout_height="41dp"
+                android:layout_marginTop="48dp"
+                android:text="@string/app_settings"
+                android:textAppearance="@style/TextAppearance.AppCompat.Large"
                 android:textSize="24sp"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintHorizontal_bias="0.509"
+                app:layout_constraintHorizontal_bias="0.451"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
 
+            <TextView
+                android:id="@+id/textview_openAiKeyLabel"
+                android:layout_width="170dp"
+                android:layout_height="46dp"
+                android:layout_marginTop="28dp"
+                android:text="@string/API_key_insert"
+                android:textSize="20sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.215"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/textView" />
+
             <EditText
-                android:id="@+id/edittext_input"
+                android:id="@+id/edittext_openAiKey"
                 android:layout_width="308dp"
                 android:layout_height="48dp"
                 android:layout_marginTop="4dp"
@@ -43,30 +56,45 @@
 
             <TextView
                 android:id="@+id/textView_systemPrompt"
-                android:layout_width="205dp"
-                android:layout_height="36dp"
-                android:layout_marginTop="44dp"
+                android:layout_width="173dp"
+                android:layout_height="39dp"
+                android:layout_marginTop="32dp"
                 android:text="@string/system_prompt"
-                android:textSize="24sp"
+                android:textSize="20sp"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintHorizontal_bias="0.256"
+                app:layout_constraintHorizontal_bias="0.222"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/edittext_input" />
+                app:layout_constraintTop_toBottomOf="@+id/edittext_openAiKey" />
 
             <EditText
                 android:id="@+id/editTextTextMultiLine_systemPrompt"
-                android:layout_width="309dp"
-                android:layout_height="53dp"
+                android:layout_width="306dp"
+                android:layout_height="64dp"
                 android:layout_marginTop="4dp"
                 android:autofillHints="system prompt"
                 android:ems="10"
                 android:gravity="start|top"
                 android:hint="@string/enter_your_system_prompt_here"
                 android:inputType="textMultiLine"
+                android:lines="3"
+                android:maxLines="6"
+                android:minLines="1"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintHorizontal_bias="0.514"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/textView_systemPrompt" />
+
+            <TextView
+                android:id="@+id/textView_message_sending_method"
+                android:layout_width="243dp"
+                android:layout_height="38dp"
+                android:layout_marginTop="32dp"
+                android:text="@string/message_sending_method"
+                android:textSize="20sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.315"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/editTextTextMultiLine_systemPrompt" />
 
             <RadioGroup
                 android:id="@+id/radioGroup_sendMethod"
@@ -92,31 +120,23 @@
                     android:layout_marginTop="4dp"
                     android:text="@string/send_message_when_i_say_send"
                     tools:layout_editor_absoluteX="88dp" />
-            </RadioGroup>
 
-            <TextView
-                android:id="@+id/textView_message_sending_method"
-                android:layout_width="279dp"
-                android:layout_height="37dp"
-                android:layout_marginTop="48dp"
-                android:text="@string/message_sending_method"
-                android:textSize="24sp"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintHorizontal_bias="0.393"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/editTextTextMultiLine_systemPrompt" />
+            </RadioGroup>
 
             <Button
                 android:id="@+id/submit_button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="52dp"
+                android:layout_marginTop="32dp"
+                android:layout_marginBottom="32dp"
                 android:text="@string/submit"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.498"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/radioGroup_sendMethod"
                 app:layout_constraintVertical_bias="0.0" />
+
         </androidx.constraintlayout.widget.ConstraintLayout>
 
     </LinearLayout>

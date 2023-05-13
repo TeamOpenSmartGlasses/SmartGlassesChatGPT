@@ -48,7 +48,7 @@ public class MainActivity extends AppCompatActivity {
         SharedPreferences sharedPreferences = getSharedPreferences("user.config", Context.MODE_PRIVATE);
 
         // Display our previously saved settings
-        openAiKeyText = findViewById(R.id.edittext_input);
+        openAiKeyText = findViewById(R.id.edittext_openAiKey);
         String savedOpenAiKey = sharedPreferences.getString("openAiKey", "");
         // Show toasts and populate openAI key text field if we have or don't have a key saved
         if (!savedOpenAiKey.isEmpty()) {
@@ -76,9 +76,18 @@ public class MainActivity extends AppCompatActivity {
             SharedPreferences.Editor editor = sharedPreferences.edit();
 
             String openAiApiKey = openAiKeyText.getText().toString().trim();
+            if (openAiApiKey.isEmpty()) {
+                Toast.makeText(this, "OpenAi key cannot be empty", Toast.LENGTH_LONG).show();
+                return;
+            }
             editor.putString("openAiKey", openAiApiKey);
+
             String systemPrompt = systemPromptInput.getText().toString().trim();
+            if (systemPrompt.isEmpty()) {
+                Toast.makeText(this, "System prompt should not be empty", Toast.LENGTH_LONG).show();
+            }
             editor.putString("systemText", systemPrompt);
+
             boolean useAutoSendMessages = autoSendRadioButton.isChecked();
             editor.putBoolean("autoSendMessages", useAutoSendMessages);
             editor.apply();

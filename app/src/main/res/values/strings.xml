@@ -10,8 +10,9 @@
     <string name="submit">Save Settings</string>
     <string name="hint">Enter your api key here</string>
     <string name="send_message_automatically_after_i_finish_speaking">Send message automatically after I finish speaking</string>
-    <string name="send_message_when_i_say_send">Send message when I say \'Send\'</string>
+    <string name="send_message_when_i_say_send">Send message when I say \'send message\'</string>
     <string name="message_sending_method">Message sending method</string>
     <string name="system_prompt">System prompt:</string>
     <string name="enter_your_system_prompt_here">Enter your system prompt here</string>
+    <string name="app_settings">App Settings</string>
 </resources>
