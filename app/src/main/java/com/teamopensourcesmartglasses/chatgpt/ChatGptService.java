@@ -18,8 +18,10 @@ import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -36,12 +38,15 @@ public class ChatGptService extends SmartGlassesAndroidService {
 
     public StringBuffer messageBuffer = new StringBuffer();
     private boolean userTurnLabelSet = false;
+    private boolean chatGptLabelSet = false;
     private final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+    private ExecutorService printExecutorService;
     private Future<?> future;
     private boolean openAiKeyProvided = false;
     private ChatGptAppMode mode = ChatGptAppMode.Inactive;
     private boolean useAutoSend;
     private ArrayList<String> commandWords;
+    private String scrollingTextTitle = "";
 
     public ChatGptService(){
         super(MainActivity.class,
@@ -116,21 +121,21 @@ public class ChatGptService extends SmartGlassesAndroidService {
         String savedKey = sharedPreferences.getString("openAiKey", "");
         if (savedKey.isEmpty()) {
             // do not start the backend if there is no key, wait for onUserSettingsChanged to init
-            Log.d(TAG, "ChatGptService: No key exists");
+//            Log.d(TAG, "ChatGptService: No key exists");
             return ;
         }
         String systemPrompt = sharedPreferences.getString("systemPrompt", "");
         if (systemPrompt.isEmpty()) {
-            Log.d(TAG, "onCreate: empty system prompt, setting it to use the default one");
+//            Log.d(TAG, "onCreate: empty system prompt, setting it to use the default one");
             systemPrompt = "Act as a the no 1 ambassador for smart glasses and generative pretrained ai! Find ways to bring up these topics as creative as possible!";
         }
         chatGptBackend.initChatGptService(savedKey, systemPrompt);
         useAutoSend = sharedPreferences.getBoolean("autoSendMessages", true);
         openAiKeyProvided = true;
 
-        Log.d(TAG, "onCreate: Saved openAi key found, token = " + savedKey);
-        Log.d(TAG, "onCreate: systemPrompt = " + systemPrompt);
-        Log.d(TAG, "onCreate: useAutoSend = " + useAutoSend);
+//        Log.d(TAG, "onCreate: Saved openAi key found, token = " + savedKey);
+//        Log.d(TAG, "onCreate: systemPrompt = " + systemPrompt);
+//        Log.d(TAG, "onCreate: useAutoSend = " + useAutoSend);
     }
 
     @Override
@@ -145,6 +150,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
         Log.d(TAG, "startChatCommandCallback: Start ChatGPT command callback called");
         Log.d(TAG, "startChatCommandCallback: OpenAiApiKeyProvided:" + openAiKeyProvided);
 
+        scrollingTextTitle = "Conversation";
         // request to be the in focus app so we can continue to show transcripts
         sgmLib.requestFocus(this::focusChangedCallback);
 
@@ -158,9 +164,10 @@ public class ChatGptService extends SmartGlassesAndroidService {
 
     public void askGptCommandCallback(String args, long commandTriggeredTime) {
         Log.d(TAG, "askGptCommandCallback: Ask ChatGPT command callback called");
-        Log.d(TAG, "askGptCommandCallback: OpenAiApiKeyProvided:" + openAiKeyProvided);
+//        Log.d(TAG, "askGptCommandCallback: OpenAiApiKeyProvided:" + openAiKeyProvided);
 
         // request to be the in focus app so we can continue to show transcripts
+        scrollingTextTitle = "Question";
         sgmLib.requestFocus(this::focusChangedCallback);
 
         mode = ChatGptAppMode.Question;
@@ -174,9 +181,9 @@ public class ChatGptService extends SmartGlassesAndroidService {
     public void recordConversationCommandCallback(String args, long commandTriggeredTime) {
         Log.d(TAG, "askGptCommandCallback: Record conversation command callback called");
 
+        scrollingTextTitle = "Listening";
         // request to be the in focus app so we can continue to show transcripts
         sgmLib.requestFocus(this::focusChangedCallback);
-
         mode = ChatGptAppMode.Record;
         Log.d(TAG, "askGptCommandCommand: Set app mode to record conversation");
 
@@ -202,9 +209,10 @@ public class ChatGptService extends SmartGlassesAndroidService {
         Log.d(TAG, "Focus callback called with state: " + focusState);
         this.focusState = focusState;
 
+        sgmLib.stopScrollingText();
         //StartScrollingText to show our translation
         if (focusState.equals(FocusStates.IN_FOCUS)) {
-            sgmLib.startScrollingText("Input prompt: ");
+            sgmLib.startScrollingText(scrollingTextTitle);
             Log.d(TAG, "startChatCommandCallback: Added a scrolling text view");
 
             messageBuffer = new StringBuffer();
@@ -225,6 +233,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
         // If its recording we just save it to memory without even the need to finish the sentence
         // It will be saved as a ChatMessage
         if (isFinal && mode == ChatGptAppMode.Record) {
+            Log.d(TAG, "processTranscriptionCallback: " + transcript);
             chatGptBackend.sendChatToMemory(transcript);
             sgmLib.pushScrollingText(transcript);
         }
@@ -282,7 +291,40 @@ public class ChatGptService extends SmartGlassesAndroidService {
 
     @Subscribe
     public void onChatReceived(ChatReceivedEvent event) {
-        sgmLib.pushScrollingText("ChatGpt: " + event.message.trim());
+        printExecutorService = Executors.newSingleThreadExecutor();
+        printExecutorService.execute(() -> {
+            String[] words = event.message.split("\\s+");
+            int wordCount = words.length;
+            int groupSize = 24;
+
+            for (int i = 0; i < wordCount; i += groupSize) {
+                // Check if the background thread has been interrupted
+                if (Thread.currentThread().isInterrupted()) {
+                    return;
+                }
+
+                int endIndex = Math.min(i + groupSize, wordCount);
+                String[] group = Arrays.copyOfRange(words, i, endIndex);
+                String groupText = String.join(" ", group);
+
+                if (!chatGptLabelSet) {
+                    sgmLib.pushScrollingText("ChatGpt: " + groupText.trim());
+                    chatGptLabelSet = true;
+                } else {
+                    sgmLib.pushScrollingText(groupText.trim());
+                }
+
+                try {
+                    Thread.sleep(5000); // Delay of 1 second (1000 milliseconds)
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                    // Restore interrupted status and return from the thread
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
+            chatGptLabelSet = false;
+        });
         userTurnLabelSet = false;
     }
 
