@@ -47,6 +47,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
     private boolean useAutoSend;
     private ArrayList<String> commandWords;
     private String scrollingTextTitle = "";
+    private final int messageDisplayDurationMs = 3000;
 
     public ChatGptService(){
         super(MainActivity.class,
@@ -233,7 +234,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
         // If its recording we just save it to memory without even the need to finish the sentence
         // It will be saved as a ChatMessage
         if (isFinal && mode == ChatGptAppMode.Record) {
-            Log.d(TAG, "processTranscriptionCallback: " + transcript);
+//            Log.d(TAG, "processTranscriptionCallback: " + transcript);
             chatGptBackend.sendChatToMemory(transcript);
             sgmLib.pushScrollingText(transcript);
         }
@@ -295,7 +296,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
         printExecutorService.execute(() -> {
             String[] words = event.message.split("\\s+");
             int wordCount = words.length;
-            int groupSize = 24;
+            int groupSize = 23; // depends on glasses size
 
             for (int i = 0; i < wordCount; i += groupSize) {
                 // Check if the background thread has been interrupted
@@ -315,7 +316,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
                 }
 
                 try {
-                    Thread.sleep(5000); // Delay of 1 second (1000 milliseconds)
+                    Thread.sleep(messageDisplayDurationMs); // Delay of 3 second (1000 milliseconds)
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                     // Restore interrupted status and return from the thread

@@ -25,8 +25,7 @@ public class ChatGptBackend {
 //    private final List<ChatMessage> messages = new ArrayList<>();
     private final MessageStore messages;
     // private StringBuffer responseMessageBuffer = new StringBuffer();
-    private final int chatGptMaxTokenSize = 3000; // let's play safe and use the 3k out of 4096
-    private final int maxSingleChatTokenSize = 100;
+    private final int chatGptMaxTokenSize = 3500; // let's play safe and use the 3500 out of 4096
     private final int messageDefaultWordsChunkSize = 100;
     private final int openAiServiceTimeoutDuration = 110;
     private StringBuffer recordingBuffer = new StringBuffer();
@@ -38,7 +37,7 @@ public class ChatGptBackend {
 //    }
 
     public ChatGptBackend(){
-        messages = new MessageStore(chatGptMaxTokenSize - maxSingleChatTokenSize);
+        messages = new MessageStore(chatGptMaxTokenSize);
     }
 
     public void initChatGptService(String token, String systemMessage) {
@@ -84,7 +83,7 @@ public class ChatGptBackend {
 
         class DoGptStuff implements Runnable {
             public void run(){
-                Log.d(TAG, "run: Doing gpt stuff, got message: " + message);
+//                Log.d(TAG, "run: Doing gpt stuff, got message: " + message);
                 messages.addMessage(ChatMessageRole.USER.value(), message);
 
 //                Log.d(TAG, "run: New Message Stack: ");
@@ -96,18 +95,17 @@ public class ChatGptBackend {
                 ChatCompletionRequest chatCompletionRequest = ChatCompletionRequest.builder()
                         .model("gpt-3.5-turbo")
                         .messages(messages.getAllMessages())
-                        .maxTokens(maxSingleChatTokenSize)
                         .n(1)
                         .build();
 
                 try {
-                    Log.d(TAG, "run: Running ChatGpt completions request");
+//                    Log.d(TAG, "run: Running ChatGpt completions request");
 
-                    Log.d(TAG, "run: Conversation so far");
-                    for (ChatMessage message:
-                            messages.getAllMessages()) {
-                        Log.d(TAG, "run: " + message.getContent());
-                    }
+//                    Log.d(TAG, "run: Conversation so far");
+//                    for (ChatMessage message:
+//                            messages.getAllMessages()) {
+//                        Log.d(TAG, "run: " + message.getContent());
+//                    }
 
                     ChatCompletionResult result = service.createChatCompletion(chatCompletionRequest);
                     List<ChatMessage> responses = result.getChoices()
@@ -120,7 +118,8 @@ public class ChatGptBackend {
 
                     // Send a chat received response
                     ChatMessage response = responses.get(0);
-                    Log.d(TAG, "run: " + response.getContent());
+//                    Log.d(TAG, "run: " + response.getContent());
+//                    Log.d(TAG, "run: " + response.getContent());
 
                     // Send back to chat UI and internal history
                     if (mode == ChatGptAppMode.Conversation) {
@@ -138,7 +137,7 @@ public class ChatGptBackend {
                         messages.addMessage(response.getRole(), "Assistant responded with an answer: " + response.getContent());
                     }
                 } catch (Exception e){
-                    Log.d(TAG, "run: encountered error: " + e.getMessage());
+//                    Log.d(TAG, "run: encountered error: " + e.getMessage());
                     EventBus.getDefault().post(new ChatErrorEvent("Check if you had set your key correctly or view the error below" + e.getMessage()));
                 }
 
@@ -179,7 +178,7 @@ public class ChatGptBackend {
 
     private void clearSomeMessages() {
         for (int i = 0; i < messages.size() / 2; i++) {
-            Log.d(TAG, "sendChat: Clearing some chat context");
+//            Log.d(TAG, "sendChat: Clearing some chat context");
             messages.removeFirst();
         }
     }
