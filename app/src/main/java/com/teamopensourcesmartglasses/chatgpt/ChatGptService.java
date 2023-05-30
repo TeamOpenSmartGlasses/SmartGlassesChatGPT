@@ -348,7 +348,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
             chatGptLabelSet = false;
         });
         userTurnLabelSet = false;
-        mode = ChatGptAppMode.Record;
+        mode = ChatGptAppMode.Conversation;
     }
 
     @Subscribe
