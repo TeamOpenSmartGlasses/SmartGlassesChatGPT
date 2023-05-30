@@ -220,6 +220,10 @@ public class ChatGptService extends SmartGlassesAndroidService {
     public void summarizeConversationContextCommandCallback(String args, long commandTriggeredTime) {
         Log.d(TAG, "askGptCommandCallback: Summarize conversation context");
 
+        scrollingTextTitle = "Summarize";
+        sgmLib.requestFocus(this::focusChangedCallback);
+        mode = ChatGptAppMode.Summarize;
+
         chatGptBackend.summarizeContext();
 
         // we might had been in the middle of a conversation, so when we switch to a question,
@@ -323,7 +327,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
         printExecutorService.execute(() -> {
             String[] words = message.split("\\s+");
             int wordCount = words.length;
-            int groupSize = 23; // depends on glasses size
+            int groupSize = 22; // depends on glasses size
 
             for (int i = 0; i < wordCount; i += groupSize) {
                 // Check if the background thread has been interrupted
@@ -366,16 +370,34 @@ public class ChatGptService extends SmartGlassesAndroidService {
     public void onChatSummaryReceived(ChatSummarizedEvent event) {
         Log.d(TAG, "onChatSummaryReceived: Received a chat summarized event");
 
-        scrollingTextTitle = "Summary";
-        // request to be the in focus app so we can continue to show transcripts
-//        sgmLib.stopScrollingText();
-//        sgmLib.startScrollingText(scrollingTextTitle);
-//    sgmLib.pushScrollingText(event.getSummary());
-        // chunkLongMessagesAndDisplay(event.getSummary());
-        Log.d(TAG, "onChatSummaryReceived: " + event.getSummary());
-        sgmLib.sendReferenceCard("Summary", event.getSummary());
+        String[] points = event.getSummary().split("\n");
+        printExecutorService = Executors.newSingleThreadExecutor();
+        printExecutorService.execute(() -> {
+            for (String point : points) {
+                if (Thread.currentThread().isInterrupted()) {
+                    return;
+                }
+                if (!chatGptLabelSet) {
+                    sgmLib.pushScrollingText("ChatGpt: " + point);
+                    chatGptLabelSet = true;
+                } else {
+                    sgmLib.pushScrollingText(point);
+                }
+
+                try {
+                    Thread.sleep(messageDisplayDurationMs); // Delay of 3 second (1000 milliseconds)
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                    // Restore interrupted status and return from the thread
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
+        });
+
+        chatGptLabelSet = false;
+//        chunkLongMessagesAndDisplay(event.getSummary());
         mode = ChatGptAppMode.Record;
-//        this.recordConversationCommandCallback(null, 0);
     }
 
     @Subscribe

@@ -86,13 +86,13 @@ public class ChatGptBackend {
                         return;
                     }
                     String startingPrompt = "The following text below is a transcript of a conversation. I need your help to summarize the text below. " +
-                            "You don't need to answer in full sentences as well, be short and concise, just tell me the summary for me in bullet form. " +
-                            "If it is a story, tell me the key moments, if it is a lecture, tell me the most important points, if it is anything else, tell me facts based on the transcript, " +
-                            "don't ever say that the transcript is messy or hard to follow, just tell me the points and not anything else. " +
-                            "The transcript will also be really messy, but you must not complain about the quality of the transcript, if it is bad, do not bring it up,  " +
-                            "just do the best you can to provide a summary of the text! Just tell me what the conversation is about briefly, remember you must not complain, " +
-                            "if you do think the conversation is messy just say no points found \n\n " +
-                            "For example, the summary must look like this \n" +
+                            "The transcript will be really messy, your first task is to replace all parts of the text that do not makes sense with words or phrases that makes the most sense,  " +
+                            "The transcript will be really messy, but you must not complain about the quality of the transcript, if it is bad, do not bring it up,  " +
+                            "No matter what, don't ever complain that the transcript is messy or hard to follow, just tell me the summary and not anything else. " +
+                            "After you are done replacing the words with ones that makes sense, I want you to summarize it, " +
+                            "You don't need to answer in full sentences as well, be short and concise, just tell me the summary for me in bullet form, each point should be no longer than 20 words long. " +
+                            "For the output, I don't want to see the transformed text, I just want the overall summary and it must follow this format, " +
+                            "don't put everything in one paragraph, I need it in bullet form as I am working with a really tight schema! \n" +
                             "Detected that the user was talking about \n " +
                             "- <point 1> \n " +
                             "- <point 2> \n " +
@@ -205,6 +205,7 @@ public class ChatGptBackend {
     }
 
     public void summarizeContext() {
+//        Log.d(TAG, "summarizeContext: Called");
         chunkRemainingBufferContent();
         runChatGpt(null, ChatGptAppMode.Summarize);
     }
