@@ -213,6 +213,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
 
         if (loadingTimer != null) {
             loadingTimer.cancel();
+            loadingTimer = null;
         }
 
         sgmLib.sendReferenceCard("Clear context", "Cleared conversation context");
@@ -327,6 +328,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
     public void onChatReceived(ChatReceivedEvent event) {
         if (loadingTimer != null) {
             loadingTimer.cancel();
+            loadingTimer = null;
         }
         chunkLongMessagesAndDisplay(event.message);
         userTurnLabelSet = false;
@@ -338,7 +340,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
         printExecutorService.execute(() -> {
             String[] words = message.split("\\s+");
             int wordCount = words.length;
-            int groupSize = 22; // depends on glasses size
+            int groupSize = 20; // depends on glasses size
 
             for (int i = 0; i < wordCount; i += groupSize) {
                 // Check if the background thread has been interrupted
@@ -383,6 +385,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
 
         if (loadingTimer != null) {
             loadingTimer.cancel();
+            loadingTimer = null;
         }
         String[] points = event.getSummary().split("\n");
         printExecutorService = Executors.newSingleThreadExecutor();
@@ -418,6 +421,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
     public void onChatError(ChatErrorEvent event) {
         if (loadingTimer != null) {
             loadingTimer.cancel();
+            loadingTimer = null;
         }
         sgmLib.sendReferenceCard("Something wrong with ChatGpt", event.getErrorMessage());
         mode = ChatGptAppMode.Record;
