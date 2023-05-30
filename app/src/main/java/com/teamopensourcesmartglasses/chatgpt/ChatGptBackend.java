@@ -8,6 +8,7 @@ import com.teamopensourcesmartglasses.chatgpt.events.ChatSummarizedEvent;
 import com.teamopensourcesmartglasses.chatgpt.events.QuestionAnswerReceivedEvent;
 import com.teamopensourcesmartglasses.chatgpt.utils.MessageStore;
 import com.theokanning.openai.completion.chat.ChatCompletionChoice;
+import com.theokanning.openai.completion.chat.ChatCompletionChunk;
 import com.theokanning.openai.completion.chat.ChatCompletionRequest;
 import com.theokanning.openai.completion.chat.ChatCompletionResult;
 import com.theokanning.openai.completion.chat.ChatMessage;
@@ -18,7 +19,12 @@ import org.greenrobot.eventbus.EventBus;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 public class ChatGptBackend {
@@ -73,6 +79,19 @@ public class ChatGptBackend {
 
     private void runChatGpt(String message, ChatGptAppMode mode) {
         class DoGptStuff implements Runnable {
+            private static final int BUFFER_LENGTH = 5;
+            private static final long MIN_INTERVAL = 3000; // 3 seconds
+            private static final int CHUNK_SIZE = 120;
+            private StringBuffer chatGptResponseStreamBuffer = new StringBuffer();
+            private Timer timer = new Timer();
+            private boolean inProgress = false;
+            private ExecutorService printExecutorService;
+            private StringBuffer responseMessage = new StringBuffer();
+
+            public DoGptStuff() {
+                printExecutorService = Executors.newSingleThreadExecutor();
+            }
+
             public void run(){
 
                 // Build prompt here
@@ -114,69 +133,115 @@ public class ChatGptBackend {
                         .n(1)
                         .build();
 
-                try {
-                    ChatCompletionResult result = service.createChatCompletion(chatCompletionRequest);
-                    List<ChatMessage> responses = result.getChoices()
-                            .stream()
-                            .map(ChatCompletionChoice::getMessage)
-                            .collect(Collectors.toList());
+                ChatCompletionResult result = service.createChatCompletion(chatCompletionRequest);
 
-                    // Send a chat received response
-                    ChatMessage response = responses.get(0);
-
-                    Log.d(TAG, "run: ChatGpt response: " + response.getContent());
-
-                    // Send back to chat UI and internal history
-                    if (mode == ChatGptAppMode.Conversation) {
-                        EventBus.getDefault().post(new ChatReceivedEvent(response.getContent()));
-                        messages.addMessage(response.getRole(), response.getContent());
-                    }
-
-                    // Send back one off question and answer
-                    if (mode == ChatGptAppMode.Question) {
-                        EventBus.getDefault().post(new QuestionAnswerReceivedEvent(message, response.getContent()));
-
-                        // Edit the last user message to specify that it was a question
-                        messages.addPrefixToLastAddedMessage("User asked a question: ");
-                        // Specify on the answer side as well
-                        messages.addMessage(response.getRole(), "Assistant responded with an answer: " + response.getContent());
-                    }
-
-                    if (mode == ChatGptAppMode.Summarize) {
-                        Log.d(TAG, "run: Sending a chat summarized event to service");
-                        EventBus.getDefault().post(new ChatSummarizedEvent(response.getContent()));
-                    }
-                } catch (Exception e){
-//                    Log.d(TAG, "run: encountered error: " + e.getMessage());
-                    EventBus.getDefault().post(new ChatErrorEvent("Check if you had set your key correctly or view the error below" + e.getMessage()));
-                }
-
-//                Log.d(TAG, "Streaming chat completion");
-//                service.streamChatCompletion(chatCompletionRequest)
-//                        .doOnError(this::onStreamChatGptError)
-//                        .doOnComplete(this::onStreamComplete)
-//                        .blockingForEach(this::onItemReceivedFromStream);
+                Log.d(TAG, "Streaming chat completion");
+                service.streamChatCompletion(chatCompletionRequest)
+                        .doOnError(this::onStreamChatGptError)
+                        .doOnComplete(this::onStreamComplete)
+                        .blockingForEach(this::onItemReceivedFromStream);
             }
 
-//            private void onStreamChatGptError(Throwable throwable) {
-//                Log.d(TAG, throwable.getMessage());
-//                EventBus.getDefault().post(new ChatReceivedEvent(throwable.getMessage()));
-//                throwable.printStackTrace();
-//            }
-//
-//            public void onItemReceivedFromStream(ChatCompletionChunk chunk) {
-//                String textChunk = chunk.getChoices().get(0).getMessage().getContent();
-//                Log.d(TAG, "Chunk received from stream: " + textChunk);
-//                EventBus.getDefault().post(new ChatReceivedEvent(textChunk));
-//                responseMessageBuffer.append(textChunk);
-//                responseMessageBuffer.append(" ");
-//            }
-//
-//            public void onStreamComplete() {
-//                String responseMessage = responseMessageBuffer.toString();
-//                messages.add(new ChatMessage(ChatMessageRole.ASSISTANT.value(), responseMessage));
-//                responseMessageBuffer = new StringBuffer();
-//            }
+            private void onStreamChatGptError(Throwable throwable) {
+                Log.d(TAG, throwable.getMessage());
+                EventBus.getDefault().post(new ChatErrorEvent(throwable.getMessage()));
+                throwable.printStackTrace();
+            }
+
+            public synchronized void onItemReceivedFromStream(ChatCompletionChunk chunk) {
+                String textChunk = chunk.getChoices().get(0).getMessage().getContent();
+                if (textChunk == null) return;
+
+                Log.d(TAG, "Chunk received from stream: " + textChunk);
+
+                responseMessage.append(textChunk);
+
+                // Send back to chat UI and internal history whenever a chunk is ready
+                Log.d(TAG, "onItemReceivedFromStream: mode");
+                if (mode == ChatGptAppMode.Conversation) {
+                    chatGptResponseStreamBuffer.append(textChunk);
+                    Log.d(TAG, "onItemReceivedFromStream: " + chatGptResponseStreamBuffer.length());
+                    if (chatGptResponseStreamBuffer.length() > CHUNK_SIZE && !inProgress) {
+                        scheduleReplyChunkProcessing();
+                    }
+                }
+            }
+
+            private void scheduleReplyChunkProcessing() {
+                Log.d(TAG, "scheduleReplyChunkProcessing: Called");
+                TimerTask task = new TimerTask() {
+                    @Override
+                    public synchronized void run() {
+                        Log.d(TAG, "processConvoReplyChunk: Called");
+                        if (inProgress || chatGptResponseStreamBuffer.length() < CHUNK_SIZE) {
+                            return;
+                        }
+                        inProgress = true;
+                        // take front of buffer and send it to glasses event
+                        String messageChunk = chatGptResponseStreamBuffer.substring(0, CHUNK_SIZE);
+                        chatGptResponseStreamBuffer = new StringBuffer(chatGptResponseStreamBuffer.substring(120, chatGptResponseStreamBuffer.length()));
+
+                        EventBus.getDefault().post(new ChatReceivedEvent(messageChunk));
+                        Log.d(TAG, "onStreamComplete: Sent a message: " + messageChunk);
+
+                        inProgress = false;
+                    }
+                };
+                Log.d(TAG, "scheduleReplyChunkProcessing: Scheduled a task");
+                timer.schedule(task, MIN_INTERVAL);
+            }
+
+            public void onStreamComplete() {
+                messages.addMessage(ChatMessageRole.USER.value(), responseMessage.toString());
+                responseMessage = new StringBuffer();
+
+                if (mode == ChatGptAppMode.Conversation) {
+                    timer.cancel();
+                    printExecutorService.execute(() -> {
+                        String[] words = chatGptResponseStreamBuffer.toString().split("\\s+");
+                        int wordCount = words.length;
+                        int groupSize = 23; // depends on glasses size
+
+                        for (int i = 0; i < wordCount; i += groupSize) {
+                            // Check if the background thread has been interrupted
+                            if (Thread.currentThread().isInterrupted()) {
+                                return;
+                            }
+
+                            int endIndex = Math.min(i + groupSize, wordCount);
+                            String[] group = Arrays.copyOfRange(words, i, endIndex);
+                            String groupText = String.join(" ", group);
+
+                            EventBus.getDefault().post(new ChatReceivedEvent(groupText.trim()));
+                            Log.d(TAG, "onStreamComplete: Sent a message: " + groupText.trim());
+
+                            try {
+                                Thread.sleep(MIN_INTERVAL); // Delay of 3 second (1000 milliseconds)
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                                // Restore interrupted status and return from the thread
+                                Thread.currentThread().interrupt();
+                                return;
+                            }
+                        }
+                    });
+                }
+
+                // Send back one off question and answer
+                if (mode == ChatGptAppMode.Question) {
+                    EventBus.getDefault().post(new QuestionAnswerReceivedEvent(message, responseMessage.toString()));
+
+                    // Edit the last user message to specify that it was a question
+                    messages.addPrefixToLastAddedMessage("User asked a question: ");
+                    // Specify on the answer side as well
+                    messages.addMessage(ChatMessageRole.ASSISTANT.value(), "Assistant responded with an answer: " + responseMessage.toString());
+                }
+
+                if (mode == ChatGptAppMode.Summarize) {
+                    Log.d(TAG, "run: Sending a chat summarized event to service");
+                    EventBus.getDefault().post(new ChatSummarizedEvent(responseMessage.toString()));
+                }
+            }
         }
         new Thread(new DoGptStuff()).start();
     }

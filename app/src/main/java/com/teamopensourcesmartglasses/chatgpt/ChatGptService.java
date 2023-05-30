@@ -313,42 +313,8 @@ public class ChatGptService extends SmartGlassesAndroidService {
 
     @Subscribe
     public void onChatReceived(ChatReceivedEvent event) {
-        printExecutorService = Executors.newSingleThreadExecutor();
-        printExecutorService.execute(() -> {
-            String[] words = event.message.split("\\s+");
-            int wordCount = words.length;
-            int groupSize = 23; // depends on glasses size
-
-            for (int i = 0; i < wordCount; i += groupSize) {
-                // Check if the background thread has been interrupted
-                if (Thread.currentThread().isInterrupted()) {
-                    return;
-                }
-
-                int endIndex = Math.min(i + groupSize, wordCount);
-                String[] group = Arrays.copyOfRange(words, i, endIndex);
-                String groupText = String.join(" ", group);
-
-                if (!chatGptLabelSet) {
-                    sgmLib.pushScrollingText("ChatGpt: " + groupText.trim());
-                    chatGptLabelSet = true;
-                } else {
-                    sgmLib.pushScrollingText(groupText.trim());
-                }
-
-                try {
-                    Thread.sleep(messageDisplayDurationMs); // Delay of 3 second (1000 milliseconds)
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                    // Restore interrupted status and return from the thread
-                    Thread.currentThread().interrupt();
-                    return;
-                }
-            }
-            chatGptLabelSet = false;
-        });
+        sgmLib.pushScrollingText(event.message);
         userTurnLabelSet = false;
-        mode = ChatGptAppMode.Record;
     }
 
     @Subscribe
