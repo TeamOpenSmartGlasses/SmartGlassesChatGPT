@@ -4,6 +4,7 @@ import android.util.Log;
 
 import com.teamopensourcesmartglasses.chatgpt.events.ChatErrorEvent;
 import com.teamopensourcesmartglasses.chatgpt.events.ChatReceivedEvent;
+import com.teamopensourcesmartglasses.chatgpt.events.ChatSummarizedEvent;
 import com.teamopensourcesmartglasses.chatgpt.events.QuestionAnswerReceivedEvent;
 import com.teamopensourcesmartglasses.chatgpt.utils.MessageStore;
 import com.theokanning.openai.completion.chat.ChatCompletionChoice;
@@ -16,6 +17,7 @@ import com.theokanning.openai.service.OpenAiService;
 import org.greenrobot.eventbus.EventBus;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -25,16 +27,10 @@ public class ChatGptBackend {
 //    private final List<ChatMessage> messages = new ArrayList<>();
     private final MessageStore messages;
     // private StringBuffer responseMessageBuffer = new StringBuffer();
-    private final int chatGptMaxTokenSize = 3500; // let's play safe and use the 3500 out of 4096
+    private final int chatGptMaxTokenSize = 3500; // let's play safe and use the 3500 out of 4096, we will leave 500 for custom hardcoded prompts
     private final int messageDefaultWordsChunkSize = 100;
     private final int openAiServiceTimeoutDuration = 110;
     private StringBuffer recordingBuffer = new StringBuffer();
-
-//    public static void setApiToken(String token) {
-//        Log.d("SmartGlassesChatGpt_ChatGptBackend", "setApiToken: token set");
-//        apiToken = token;
-//        EventBus.getDefault().post(new OpenAIApiKeyProvidedEvent(token));
-//    }
 
     public ChatGptBackend(){
         messages = new MessageStore(chatGptMaxTokenSize);
@@ -68,58 +64,67 @@ public class ChatGptBackend {
             return;
         }
 
-        // If there is still words from a previous record session, then add them into the messageQueue
-        if (recordingBuffer.length() != 0) {
-            Log.d(TAG, "sendChatToGpt: There are still words from a recording, adding them to chunk");
-            messages.addMessage(ChatMessageRole.USER.value(), recordingBuffer.toString());
-            recordingBuffer = new StringBuffer();
-        }
+        chunkRemainingBufferContent();
 
-        // Just an example of how this would work (pulled mostly from openai-java library example)...:
-        // 1. Send message to ChatGPT
-        // 2. Wait for response
-        // 3. On response, post a "ChatGptResponseReceivedEvent" with the data
-        // 3a) Subscribe to that event in ChatGptService.java and do something with the data (ie: send reference card to smart glasses)
+        // Add the user message and pass the entire message context to chatgpt
+        messages.addMessage(ChatMessageRole.USER.value(), message);
+        runChatGpt(message, mode);
+    }
 
+    private void runChatGpt(String message, ChatGptAppMode mode) {
         class DoGptStuff implements Runnable {
             public void run(){
-//                Log.d(TAG, "run: Doing gpt stuff, got message: " + message);
-                messages.addMessage(ChatMessageRole.USER.value(), message);
 
-//                Log.d(TAG, "run: New Message Stack: ");
-//                for (ChatMessage message : messages) {
-//                    Log.d(TAG, message.getRole() + ": " + message.getContent());
-//                }
+                // Build prompt here
+                ArrayList<ChatMessage> context;
+                if (mode != ChatGptAppMode.Summarize) {
+                    context = messages.getAllMessages();
+                } else {
+                    context = messages.getAllMessagesWithoutSystemPrompt();
+                    String startingPrompt = "The following text below is a transcript of a conversation, but we have no idea who is speaking, " +
+                            "but that doesn't matter. I need your help to summarize whatever useful information you can get from the text below. " +
+                            "I want you to answer as concise as possible, the topics involved in the text, and I want it in bullet form. " +
+                            "You don't need to answer in full sentences as well, just tell me the summary on a very high level. " +
+                            "The transcript will also be really messy, but please do not reply with something like 'The conversation was " +
+                            "hard to follow' or 'The conversation was messy' or comments like " +
+                            "'Detected that the conversation was difficult to make sense of and did not contain much useful information. No clear topics can be detected', " +
+                            "just do the best you can to provide a summary of the most important points from the text! \n\n " +
+                            "For example, the summary output can look like this \n" +
+                            "Detected that the user was talking about \n " +
+                            "- <key point 1> \n " +
+                            "- <key point 2> \n " +
+                            "- <key point 3> and so on \n\n " +
+                            "The text can be found within the triple dollar signs here: \n " +
+                            "$$$ \n";
+                    context.add(0, new ChatMessage(ChatMessageRole.SYSTEM.value(), startingPrompt));
+                    String endingPrompt = "\n $$$";
+                    context.add(new ChatMessage(ChatMessageRole.SYSTEM.value(), endingPrompt));
+                }
+
+                Log.d(TAG, "run: messages: ");
+                for (ChatMessage message:
+                     context) {
+                    Log.d(TAG, "run: message: " + message.getContent());
+                }
 
                 // Todo: Change completions to streams
                 ChatCompletionRequest chatCompletionRequest = ChatCompletionRequest.builder()
                         .model("gpt-3.5-turbo")
-                        .messages(messages.getAllMessages())
+                        .messages(context)
                         .n(1)
                         .build();
 
                 try {
-//                    Log.d(TAG, "run: Running ChatGpt completions request");
-
-//                    Log.d(TAG, "run: Conversation so far");
-//                    for (ChatMessage message:
-//                            messages.getAllMessages()) {
-//                        Log.d(TAG, "run: " + message.getContent());
-//                    }
-
                     ChatCompletionResult result = service.createChatCompletion(chatCompletionRequest);
                     List<ChatMessage> responses = result.getChoices()
-                                                        .stream()
-                                                        .map(ChatCompletionChoice::getMessage)
-                                                        .collect(Collectors.toList());
-
-//                    long tokensUsed = result.getUsage().getTotalTokens();
-//                    Log.d(TAG, "run: tokens used: " + tokensUsed + "/" + chatGptMaxTokenSize);
+                            .stream()
+                            .map(ChatCompletionChoice::getMessage)
+                            .collect(Collectors.toList());
 
                     // Send a chat received response
                     ChatMessage response = responses.get(0);
-//                    Log.d(TAG, "run: " + response.getContent());
-//                    Log.d(TAG, "run: " + response.getContent());
+
+                    Log.d(TAG, "run: ChatGpt response: " + response.getContent());
 
                     // Send back to chat UI and internal history
                     if (mode == ChatGptAppMode.Conversation) {
@@ -135,6 +140,11 @@ public class ChatGptBackend {
                         messages.addPrefixToLastAddedMessage("User asked a question: ");
                         // Specify on the answer side as well
                         messages.addMessage(response.getRole(), "Assistant responded with an answer: " + response.getContent());
+                    }
+
+                    if (mode == ChatGptAppMode.Summarize) {
+                        Log.d(TAG, "run: Sending a chat summarized event to service");
+                        EventBus.getDefault().post(new ChatSummarizedEvent(response.getContent()));
                     }
                 } catch (Exception e){
 //                    Log.d(TAG, "run: encountered error: " + e.getMessage());
@@ -170,6 +180,15 @@ public class ChatGptBackend {
         }
         new Thread(new DoGptStuff()).start();
     }
+    
+    private void chunkRemainingBufferContent() {
+        // If there is still words from a previous record session, then add them into the messageQueue
+        if (recordingBuffer.length() != 0) {
+            Log.d(TAG, "sendChatToGpt: There are still words from a recording, adding them to chunk");
+            messages.addMessage(ChatMessageRole.USER.value(), recordingBuffer.toString());
+            recordingBuffer = new StringBuffer();
+        }
+    }
 
     private int getWordCount(String message) {
         String[] words = message.split("\\s+");
@@ -178,9 +197,13 @@ public class ChatGptBackend {
 
     private void clearSomeMessages() {
         for (int i = 0; i < messages.size() / 2; i++) {
-//            Log.d(TAG, "sendChat: Clearing some chat context");
-            messages.removeFirst();
+            messages.removeOldest();
         }
+    }
+
+    public void summarizeContext() {
+        chunkRemainingBufferContent();
+        runChatGpt(null, ChatGptAppMode.Summarize);
     }
 
     public void clearConversationContext() {

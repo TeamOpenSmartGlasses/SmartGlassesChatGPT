@@ -11,6 +11,7 @@ import com.teamopensmartglasses.sgmlib.SGMLib;
 import com.teamopensmartglasses.sgmlib.SmartGlassesAndroidService;
 import com.teamopensourcesmartglasses.chatgpt.events.ChatErrorEvent;
 import com.teamopensourcesmartglasses.chatgpt.events.ChatReceivedEvent;
+import com.teamopensourcesmartglasses.chatgpt.events.ChatSummarizedEvent;
 import com.teamopensourcesmartglasses.chatgpt.events.QuestionAnswerReceivedEvent;
 import com.teamopensourcesmartglasses.chatgpt.events.UserSettingsChangedEvent;
 
@@ -43,7 +44,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
     private ExecutorService printExecutorService;
     private Future<?> future;
     private boolean openAiKeyProvided = false;
-    private ChatGptAppMode mode = ChatGptAppMode.Inactive;
+    private ChatGptAppMode mode = ChatGptAppMode.Record; // Turn on listening by default
     private boolean useAutoSend;
     private ArrayList<String> commandWords;
     private String scrollingTextTitle = "";
@@ -93,6 +94,12 @@ public class ChatGptService extends SmartGlassesAndroidService {
                 new String[] { "listen" },
                 "Record your conversation so you can ask ChatGpt for questions later on"
         );
+        SGMCommand summarizeConversationCommand = new SGMCommand(
+                appName,
+                UUID.fromString("9ab3f985-e9d1-4ab2-8d28-0d1e6111bcb4"),
+                new String[] { "summarize" },
+                "Summarize your conversation using ChatGpt"
+        );
 
         // Save all the wake words so we can detect and remove them during transcriptions with just 1 word
         commandWords = new ArrayList<>();
@@ -100,12 +107,14 @@ public class ChatGptService extends SmartGlassesAndroidService {
         commandWords.addAll(askGptCommand.getPhrases());
         commandWords.addAll(clearContextCommand.getPhrases());
         commandWords.addAll(recordConversationCommand.getPhrases());
+        commandWords.addAll(summarizeConversationCommand.getPhrases());
 
         // Register the command
         sgmLib.registerCommand(startChatCommand, this::startChatCommandCallback);
         sgmLib.registerCommand(askGptCommand, this::askGptCommandCallback);
         sgmLib.registerCommand(recordConversationCommand, this::recordConversationCommandCallback);
         sgmLib.registerCommand(clearContextCommand, this::clearConversationContextCommandCallback);
+        sgmLib.registerCommand(summarizeConversationCommand, this::summarizeConversationContextCommandCallback);
 
         //Subscribe to transcription stream
         sgmLib.subscribe(DataStreamType.TRANSCRIPTION_ENGLISH_STREAM, this::processTranscriptionCallback);
@@ -134,6 +143,8 @@ public class ChatGptService extends SmartGlassesAndroidService {
         useAutoSend = sharedPreferences.getBoolean("autoSendMessages", true);
         openAiKeyProvided = true;
 
+        focusState = FocusStates.IN_FOCUS;
+        this.recordConversationCommandCallback(null, 0);
 //        Log.d(TAG, "onCreate: Saved openAi key found, token = " + savedKey);
 //        Log.d(TAG, "onCreate: systemPrompt = " + systemPrompt);
 //        Log.d(TAG, "onCreate: useAutoSend = " + useAutoSend);
@@ -197,9 +208,19 @@ public class ChatGptService extends SmartGlassesAndroidService {
         Log.d(TAG, "askGptCommandCallback: Reset conversation context");
 
         sgmLib.sendReferenceCard("Clear context", "Cleared conversation context");
-        mode = ChatGptAppMode.Inactive;
+        mode = ChatGptAppMode.Record;
 
         chatGptBackend.clearConversationContext();
+
+        // we might had been in the middle of a conversation, so when we switch to a question,
+        // we need to reset our messageBuffer
+        resetUserMessage();
+    }
+
+    public void summarizeConversationContextCommandCallback(String args, long commandTriggeredTime) {
+        Log.d(TAG, "askGptCommandCallback: Summarize conversation context");
+
+        chatGptBackend.summarizeContext();
 
         // we might had been in the middle of a conversation, so when we switch to a question,
         // we need to reset our messageBuffer
@@ -234,7 +255,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
         // If its recording we just save it to memory without even the need to finish the sentence
         // It will be saved as a ChatMessage
         if (isFinal && mode == ChatGptAppMode.Record) {
-//            Log.d(TAG, "processTranscriptionCallback: " + transcript);
+            Log.d(TAG, "processTranscriptionCallback: " + transcript);
             chatGptBackend.sendChatToMemory(transcript);
             sgmLib.pushScrollingText(transcript);
         }
@@ -327,18 +348,28 @@ public class ChatGptService extends SmartGlassesAndroidService {
             chatGptLabelSet = false;
         });
         userTurnLabelSet = false;
+        mode = ChatGptAppMode.Record;
     }
 
     @Subscribe
     public void onQuestionAnswerReceived(QuestionAnswerReceivedEvent event) {
         String body = "Q: " + event.getQuestion() + "\n\n" + "A: " + event.getAnswer();
         sgmLib.sendReferenceCard("AskGpt", body);
-        mode = ChatGptAppMode.Inactive;
+        mode = ChatGptAppMode.Record;
+    }
+
+    @Subscribe
+    public void onChatSummaryReceived(ChatSummarizedEvent event) {
+        Log.d(TAG, "onChatSummaryReceived: Received a chat summarized event");
+        String body = event.getSummary();
+        sgmLib.sendReferenceCard("Summary", body);
+        mode = ChatGptAppMode.Record;
     }
 
     @Subscribe
     public void onChatError(ChatErrorEvent event) {
         sgmLib.sendReferenceCard("Something wrong with ChatGpt", event.getErrorMessage());
+        mode = ChatGptAppMode.Record;
     }
 
     @Subscribe
@@ -350,5 +381,6 @@ public class ChatGptService extends SmartGlassesAndroidService {
 
         Log.d(TAG, "onUserSettingsChanged: Auto send messages after finish speaking = " + event.getUseAutoSend());
         useAutoSend = event.getUseAutoSend();
+        mode = ChatGptAppMode.Record;
     }
 }
