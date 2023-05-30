@@ -208,5 +208,6 @@ public class ChatGptBackend {
 
     public void clearConversationContext() {
         messages.resetMessages();
+        recordingBuffer = new StringBuffer();
     }
 }
