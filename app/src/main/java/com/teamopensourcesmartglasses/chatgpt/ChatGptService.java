@@ -313,9 +313,15 @@ public class ChatGptService extends SmartGlassesAndroidService {
 
     @Subscribe
     public void onChatReceived(ChatReceivedEvent event) {
+        chunkLongMessagesAndDisplay(event.message);
+        userTurnLabelSet = false;
+        mode = ChatGptAppMode.Conversation;
+    }
+
+    private void chunkLongMessagesAndDisplay(String message) {
         printExecutorService = Executors.newSingleThreadExecutor();
         printExecutorService.execute(() -> {
-            String[] words = event.message.split("\\s+");
+            String[] words = message.split("\\s+");
             int wordCount = words.length;
             int groupSize = 23; // depends on glasses size
 
@@ -347,8 +353,6 @@ public class ChatGptService extends SmartGlassesAndroidService {
             }
             chatGptLabelSet = false;
         });
-        userTurnLabelSet = false;
-        mode = ChatGptAppMode.Conversation;
     }
 
     @Subscribe
@@ -361,9 +365,17 @@ public class ChatGptService extends SmartGlassesAndroidService {
     @Subscribe
     public void onChatSummaryReceived(ChatSummarizedEvent event) {
         Log.d(TAG, "onChatSummaryReceived: Received a chat summarized event");
-        String body = event.getSummary();
-        sgmLib.sendReferenceCard("Summary", body);
+
+        scrollingTextTitle = "Summary";
+        // request to be the in focus app so we can continue to show transcripts
+//        sgmLib.stopScrollingText();
+//        sgmLib.startScrollingText(scrollingTextTitle);
+//    sgmLib.pushScrollingText(event.getSummary());
+        // chunkLongMessagesAndDisplay(event.getSummary());
+        Log.d(TAG, "onChatSummaryReceived: " + event.getSummary());
+        sgmLib.sendReferenceCard("Summary", event.getSummary());
         mode = ChatGptAppMode.Record;
+//        this.recordConversationCommandCallback(null, 0);
     }
 
     @Subscribe
@@ -382,5 +394,6 @@ public class ChatGptService extends SmartGlassesAndroidService {
         Log.d(TAG, "onUserSettingsChanged: Auto send messages after finish speaking = " + event.getUseAutoSend());
         useAutoSend = event.getUseAutoSend();
         mode = ChatGptAppMode.Record;
+        this.recordConversationCommandCallback(null, 0);
     }
 }

@@ -81,19 +81,22 @@ public class ChatGptBackend {
                     context = messages.getAllMessages();
                 } else {
                     context = messages.getAllMessagesWithoutSystemPrompt();
-                    String startingPrompt = "The following text below is a transcript of a conversation, but we have no idea who is speaking, " +
-                            "but that doesn't matter. I need your help to summarize whatever useful information you can get from the text below. " +
-                            "I want you to answer as concise as possible, the topics involved in the text, and I want it in bullet form. " +
-                            "You don't need to answer in full sentences as well, just tell me the summary on a very high level. " +
-                            "The transcript will also be really messy, but please do not reply with something like 'The conversation was " +
-                            "hard to follow' or 'The conversation was messy' or comments like " +
-                            "'Detected that the conversation was difficult to make sense of and did not contain much useful information. No clear topics can be detected', " +
-                            "just do the best you can to provide a summary of the most important points from the text! \n\n " +
-                            "For example, the summary output can look like this \n" +
+                    if (context.isEmpty()) {
+                        EventBus.getDefault().post(new ChatErrorEvent("No conversation was recorded, unable to summarize."));
+                        return;
+                    }
+                    String startingPrompt = "The following text below is a transcript of a conversation. I need your help to summarize the text below. " +
+                            "You don't need to answer in full sentences as well, be short and concise, just tell me the summary for me in bullet form. " +
+                            "If it is a story, tell me the key moments, if it is a lecture, tell me the most important points, if it is anything else, tell me facts based on the transcript, " +
+                            "don't ever say that the transcript is messy or hard to follow, just tell me the points and not anything else. " +
+                            "The transcript will also be really messy, but you must not complain about the quality of the transcript, if it is bad, do not bring it up,  " +
+                            "just do the best you can to provide a summary of the text! Just tell me what the conversation is about briefly, remember you must not complain, " +
+                            "if you do think the conversation is messy just say no points found \n\n " +
+                            "For example, the summary must look like this \n" +
                             "Detected that the user was talking about \n " +
-                            "- <key point 1> \n " +
-                            "- <key point 2> \n " +
-                            "- <key point 3> and so on \n\n " +
+                            "- <point 1> \n " +
+                            "- <point 2> \n " +
+                            "- <point 3> and so on \n\n " +
                             "The text can be found within the triple dollar signs here: \n " +
                             "$$$ \n";
                     context.add(0, new ChatMessage(ChatMessageRole.SYSTEM.value(), startingPrompt));
