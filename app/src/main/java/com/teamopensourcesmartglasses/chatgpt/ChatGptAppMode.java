@@ -4,5 +4,6 @@ public enum ChatGptAppMode {
     Conversation,
     Question,
     Record,
+    Summarize,
     Inactive
 }

@@ -11,6 +11,8 @@ import com.teamopensmartglasses.sgmlib.SGMLib;
 import com.teamopensmartglasses.sgmlib.SmartGlassesAndroidService;
 import com.teamopensourcesmartglasses.chatgpt.events.ChatErrorEvent;
 import com.teamopensourcesmartglasses.chatgpt.events.ChatReceivedEvent;
+import com.teamopensourcesmartglasses.chatgpt.events.ChatSummarizedEvent;
+import com.teamopensourcesmartglasses.chatgpt.events.IsLoadingEvent;
 import com.teamopensourcesmartglasses.chatgpt.events.QuestionAnswerReceivedEvent;
 import com.teamopensourcesmartglasses.chatgpt.events.UserSettingsChangedEvent;
 
@@ -18,8 +20,12 @@ import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Objects;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -36,12 +42,17 @@ public class ChatGptService extends SmartGlassesAndroidService {
 
     public StringBuffer messageBuffer = new StringBuffer();
     private boolean userTurnLabelSet = false;
+    private boolean chatGptLabelSet = false;
     private final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+    private ExecutorService printExecutorService;
     private Future<?> future;
     private boolean openAiKeyProvided = false;
-    private ChatGptAppMode mode = ChatGptAppMode.Inactive;
+    private ChatGptAppMode mode = ChatGptAppMode.Record; // Turn on listening by default
     private boolean useAutoSend;
     private ArrayList<String> commandWords;
+    private String scrollingTextTitle = "";
+    private final int messageDisplayDurationMs = 3000;
+    private Timer loadingTimer;
 
     public ChatGptService(){
         super(MainActivity.class,
@@ -87,6 +98,12 @@ public class ChatGptService extends SmartGlassesAndroidService {
                 new String[] { "listen" },
                 "Record your conversation so you can ask ChatGpt for questions later on"
         );
+        SGMCommand summarizeConversationCommand = new SGMCommand(
+                appName,
+                UUID.fromString("9ab3f985-e9d1-4ab2-8d28-0d1e6111bcb4"),
+                new String[] { "summarize" },
+                "Summarize your conversation using ChatGpt"
+        );
 
         // Save all the wake words so we can detect and remove them during transcriptions with just 1 word
         commandWords = new ArrayList<>();
@@ -94,12 +111,14 @@ public class ChatGptService extends SmartGlassesAndroidService {
         commandWords.addAll(askGptCommand.getPhrases());
         commandWords.addAll(clearContextCommand.getPhrases());
         commandWords.addAll(recordConversationCommand.getPhrases());
+        commandWords.addAll(summarizeConversationCommand.getPhrases());
 
         // Register the command
         sgmLib.registerCommand(startChatCommand, this::startChatCommandCallback);
         sgmLib.registerCommand(askGptCommand, this::askGptCommandCallback);
         sgmLib.registerCommand(recordConversationCommand, this::recordConversationCommandCallback);
         sgmLib.registerCommand(clearContextCommand, this::clearConversationContextCommandCallback);
+        sgmLib.registerCommand(summarizeConversationCommand, this::summarizeConversationContextCommandCallback);
 
         //Subscribe to transcription stream
         sgmLib.subscribe(DataStreamType.TRANSCRIPTION_ENGLISH_STREAM, this::processTranscriptionCallback);
@@ -116,21 +135,23 @@ public class ChatGptService extends SmartGlassesAndroidService {
         String savedKey = sharedPreferences.getString("openAiKey", "");
         if (savedKey.isEmpty()) {
             // do not start the backend if there is no key, wait for onUserSettingsChanged to init
-            Log.d(TAG, "ChatGptService: No key exists");
+//            Log.d(TAG, "ChatGptService: No key exists");
             return ;
         }
         String systemPrompt = sharedPreferences.getString("systemPrompt", "");
         if (systemPrompt.isEmpty()) {
-            Log.d(TAG, "onCreate: empty system prompt, setting it to use the default one");
+//            Log.d(TAG, "onCreate: empty system prompt, setting it to use the default one");
             systemPrompt = "Act as a the no 1 ambassador for smart glasses and generative pretrained ai! Find ways to bring up these topics as creative as possible!";
         }
         chatGptBackend.initChatGptService(savedKey, systemPrompt);
         useAutoSend = sharedPreferences.getBoolean("autoSendMessages", true);
         openAiKeyProvided = true;
 
-        Log.d(TAG, "onCreate: Saved openAi key found, token = " + savedKey);
-        Log.d(TAG, "onCreate: systemPrompt = " + systemPrompt);
-        Log.d(TAG, "onCreate: useAutoSend = " + useAutoSend);
+        focusState = FocusStates.IN_FOCUS;
+        this.recordConversationCommandCallback(null, 0);
+//        Log.d(TAG, "onCreate: Saved openAi key found, token = " + savedKey);
+//        Log.d(TAG, "onCreate: systemPrompt = " + systemPrompt);
+//        Log.d(TAG, "onCreate: useAutoSend = " + useAutoSend);
     }
 
     @Override
@@ -145,6 +166,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
         Log.d(TAG, "startChatCommandCallback: Start ChatGPT command callback called");
         Log.d(TAG, "startChatCommandCallback: OpenAiApiKeyProvided:" + openAiKeyProvided);
 
+        scrollingTextTitle = "Conversation";
         // request to be the in focus app so we can continue to show transcripts
         sgmLib.requestFocus(this::focusChangedCallback);
 
@@ -158,9 +180,10 @@ public class ChatGptService extends SmartGlassesAndroidService {
 
     public void askGptCommandCallback(String args, long commandTriggeredTime) {
         Log.d(TAG, "askGptCommandCallback: Ask ChatGPT command callback called");
-        Log.d(TAG, "askGptCommandCallback: OpenAiApiKeyProvided:" + openAiKeyProvided);
+//        Log.d(TAG, "askGptCommandCallback: OpenAiApiKeyProvided:" + openAiKeyProvided);
 
         // request to be the in focus app so we can continue to show transcripts
+        scrollingTextTitle = "Question";
         sgmLib.requestFocus(this::focusChangedCallback);
 
         mode = ChatGptAppMode.Question;
@@ -174,9 +197,9 @@ public class ChatGptService extends SmartGlassesAndroidService {
     public void recordConversationCommandCallback(String args, long commandTriggeredTime) {
         Log.d(TAG, "askGptCommandCallback: Record conversation command callback called");
 
+        scrollingTextTitle = "Listening";
         // request to be the in focus app so we can continue to show transcripts
         sgmLib.requestFocus(this::focusChangedCallback);
-
         mode = ChatGptAppMode.Record;
         Log.d(TAG, "askGptCommandCommand: Set app mode to record conversation");
 
@@ -188,10 +211,28 @@ public class ChatGptService extends SmartGlassesAndroidService {
     public void clearConversationContextCommandCallback(String args, long commandTriggeredTime) {
         Log.d(TAG, "askGptCommandCallback: Reset conversation context");
 
+        if (loadingTimer != null) {
+            loadingTimer.cancel();
+        }
+
         sgmLib.sendReferenceCard("Clear context", "Cleared conversation context");
-        mode = ChatGptAppMode.Inactive;
+        mode = ChatGptAppMode.Record;
 
         chatGptBackend.clearConversationContext();
+
+        // we might had been in the middle of a conversation, so when we switch to a question,
+        // we need to reset our messageBuffer
+        resetUserMessage();
+    }
+
+    public void summarizeConversationContextCommandCallback(String args, long commandTriggeredTime) {
+        Log.d(TAG, "askGptCommandCallback: Summarize conversation context");
+
+        scrollingTextTitle = "Summarize";
+        sgmLib.requestFocus(this::focusChangedCallback);
+        mode = ChatGptAppMode.Summarize;
+
+        chatGptBackend.summarizeContext();
 
         // we might had been in the middle of a conversation, so when we switch to a question,
         // we need to reset our messageBuffer
@@ -202,9 +243,10 @@ public class ChatGptService extends SmartGlassesAndroidService {
         Log.d(TAG, "Focus callback called with state: " + focusState);
         this.focusState = focusState;
 
+        sgmLib.stopScrollingText();
         //StartScrollingText to show our translation
         if (focusState.equals(FocusStates.IN_FOCUS)) {
-            sgmLib.startScrollingText("Input prompt: ");
+            sgmLib.startScrollingText(scrollingTextTitle);
             Log.d(TAG, "startChatCommandCallback: Added a scrolling text view");
 
             messageBuffer = new StringBuffer();
@@ -225,6 +267,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
         // If its recording we just save it to memory without even the need to finish the sentence
         // It will be saved as a ChatMessage
         if (isFinal && mode == ChatGptAppMode.Record) {
+            Log.d(TAG, "processTranscriptionCallback: " + transcript);
             chatGptBackend.sendChatToMemory(transcript);
             sgmLib.pushScrollingText(transcript);
         }
@@ -282,20 +325,118 @@ public class ChatGptService extends SmartGlassesAndroidService {
 
     @Subscribe
     public void onChatReceived(ChatReceivedEvent event) {
-        sgmLib.pushScrollingText("ChatGpt: " + event.message.trim());
+        if (loadingTimer != null) {
+            loadingTimer.cancel();
+        }
+        chunkLongMessagesAndDisplay(event.message);
         userTurnLabelSet = false;
+        mode = ChatGptAppMode.Conversation;
+    }
+
+    private void chunkLongMessagesAndDisplay(String message) {
+        printExecutorService = Executors.newSingleThreadExecutor();
+        printExecutorService.execute(() -> {
+            String[] words = message.split("\\s+");
+            int wordCount = words.length;
+            int groupSize = 22; // depends on glasses size
+
+            for (int i = 0; i < wordCount; i += groupSize) {
+                // Check if the background thread has been interrupted
+                if (Thread.currentThread().isInterrupted()) {
+                    return;
+                }
+
+                int endIndex = Math.min(i + groupSize, wordCount);
+                String[] group = Arrays.copyOfRange(words, i, endIndex);
+                String groupText = String.join(" ", group);
+
+                if (!chatGptLabelSet) {
+                    sgmLib.pushScrollingText("ChatGpt: " + groupText.trim());
+                    chatGptLabelSet = true;
+                } else {
+                    sgmLib.pushScrollingText(groupText.trim());
+                }
+
+                try {
+                    Thread.sleep(messageDisplayDurationMs); // Delay of 3 second (1000 milliseconds)
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                    // Restore interrupted status and return from the thread
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
+            chatGptLabelSet = false;
+        });
     }
 
     @Subscribe
     public void onQuestionAnswerReceived(QuestionAnswerReceivedEvent event) {
         String body = "Q: " + event.getQuestion() + "\n\n" + "A: " + event.getAnswer();
         sgmLib.sendReferenceCard("AskGpt", body);
-        mode = ChatGptAppMode.Inactive;
+        mode = ChatGptAppMode.Record;
+    }
+
+    @Subscribe
+    public void onChatSummaryReceived(ChatSummarizedEvent event) {
+        Log.d(TAG, "onChatSummaryReceived: Received a chat summarized event");
+
+        if (loadingTimer != null) {
+            loadingTimer.cancel();
+        }
+        String[] points = event.getSummary().split("\n");
+        printExecutorService = Executors.newSingleThreadExecutor();
+        printExecutorService.execute(() -> {
+            for (String point : points) {
+                if (Thread.currentThread().isInterrupted()) {
+                    return;
+                }
+                if (!chatGptLabelSet) {
+                    sgmLib.pushScrollingText("ChatGpt: " + point);
+                    chatGptLabelSet = true;
+                } else {
+                    sgmLib.pushScrollingText(point);
+                }
+
+                try {
+                    Thread.sleep(messageDisplayDurationMs); // Delay of 3 second (1000 milliseconds)
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                    // Restore interrupted status and return from the thread
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
+        });
+
+        chatGptLabelSet = false;
+//        chunkLongMessagesAndDisplay(event.getSummary());
+        mode = ChatGptAppMode.Record;
     }
 
     @Subscribe
     public void onChatError(ChatErrorEvent event) {
+        if (loadingTimer != null) {
+            loadingTimer.cancel();
+        }
         sgmLib.sendReferenceCard("Something wrong with ChatGpt", event.getErrorMessage());
+        mode = ChatGptAppMode.Record;
+    }
+
+    @Subscribe
+    public void onLoading(IsLoadingEvent event) {
+        // For those features using scrolling text, it might be useful to let the user know that chatgpt is thinking
+        if (mode == ChatGptAppMode.Summarize || mode == ChatGptAppMode.Conversation) {
+            if (loadingTimer == null) {
+                loadingTimer = new Timer();
+            }
+            loadingTimer.scheduleAtFixedRate(new TimerTask() {
+                @Override
+                public void run() {
+                    sgmLib.pushScrollingText("ChatGpt is thinking...");
+                }
+            }, 0, 5000);
+        }
     }
 
     @Subscribe
@@ -307,5 +448,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
 
         Log.d(TAG, "onUserSettingsChanged: Auto send messages after finish speaking = " + event.getUseAutoSend());
         useAutoSend = event.getUseAutoSend();
+        mode = ChatGptAppMode.Record;
+        this.recordConversationCommandCallback(null, 0);
     }
 }
