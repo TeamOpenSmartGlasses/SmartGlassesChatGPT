@@ -12,6 +12,7 @@ import com.teamopensmartglasses.sgmlib.SmartGlassesAndroidService;
 import com.teamopensourcesmartglasses.chatgpt.events.ChatErrorEvent;
 import com.teamopensourcesmartglasses.chatgpt.events.ChatReceivedEvent;
 import com.teamopensourcesmartglasses.chatgpt.events.ChatSummarizedEvent;
+import com.teamopensourcesmartglasses.chatgpt.events.IsLoadingEvent;
 import com.teamopensourcesmartglasses.chatgpt.events.QuestionAnswerReceivedEvent;
 import com.teamopensourcesmartglasses.chatgpt.events.UserSettingsChangedEvent;
 
@@ -21,6 +22,8 @@ import org.greenrobot.eventbus.Subscribe;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -49,6 +52,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
     private ArrayList<String> commandWords;
     private String scrollingTextTitle = "";
     private final int messageDisplayDurationMs = 3000;
+    private Timer loadingTimer;
 
     public ChatGptService(){
         super(MainActivity.class,
@@ -207,6 +211,10 @@ public class ChatGptService extends SmartGlassesAndroidService {
     public void clearConversationContextCommandCallback(String args, long commandTriggeredTime) {
         Log.d(TAG, "askGptCommandCallback: Reset conversation context");
 
+        if (loadingTimer != null) {
+            loadingTimer.cancel();
+        }
+
         sgmLib.sendReferenceCard("Clear context", "Cleared conversation context");
         mode = ChatGptAppMode.Record;
 
@@ -317,6 +325,9 @@ public class ChatGptService extends SmartGlassesAndroidService {
 
     @Subscribe
     public void onChatReceived(ChatReceivedEvent event) {
+        if (loadingTimer != null) {
+            loadingTimer.cancel();
+        }
         chunkLongMessagesAndDisplay(event.message);
         userTurnLabelSet = false;
         mode = ChatGptAppMode.Conversation;
@@ -370,6 +381,9 @@ public class ChatGptService extends SmartGlassesAndroidService {
     public void onChatSummaryReceived(ChatSummarizedEvent event) {
         Log.d(TAG, "onChatSummaryReceived: Received a chat summarized event");
 
+        if (loadingTimer != null) {
+            loadingTimer.cancel();
+        }
         String[] points = event.getSummary().split("\n");
         printExecutorService = Executors.newSingleThreadExecutor();
         printExecutorService.execute(() -> {
@@ -402,8 +416,27 @@ public class ChatGptService extends SmartGlassesAndroidService {
 
     @Subscribe
     public void onChatError(ChatErrorEvent event) {
+        if (loadingTimer != null) {
+            loadingTimer.cancel();
+        }
         sgmLib.sendReferenceCard("Something wrong with ChatGpt", event.getErrorMessage());
         mode = ChatGptAppMode.Record;
+    }
+
+    @Subscribe
+    public void onLoading(IsLoadingEvent event) {
+        // For those features using scrolling text, it might be useful to let the user know that chatgpt is thinking
+        if (mode == ChatGptAppMode.Summarize || mode == ChatGptAppMode.Conversation) {
+            if (loadingTimer == null) {
+                loadingTimer = new Timer();
+            }
+            loadingTimer.scheduleAtFixedRate(new TimerTask() {
+                @Override
+                public void run() {
+                    sgmLib.pushScrollingText("ChatGpt is thinking...");
+                }
+            }, 0, 5000);
+        }
     }
 
     @Subscribe

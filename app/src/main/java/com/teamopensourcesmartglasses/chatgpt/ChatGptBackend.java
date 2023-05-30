@@ -5,6 +5,7 @@ import android.util.Log;
 import com.teamopensourcesmartglasses.chatgpt.events.ChatErrorEvent;
 import com.teamopensourcesmartglasses.chatgpt.events.ChatReceivedEvent;
 import com.teamopensourcesmartglasses.chatgpt.events.ChatSummarizedEvent;
+import com.teamopensourcesmartglasses.chatgpt.events.IsLoadingEvent;
 import com.teamopensourcesmartglasses.chatgpt.events.QuestionAnswerReceivedEvent;
 import com.teamopensourcesmartglasses.chatgpt.utils.MessageStore;
 import com.theokanning.openai.completion.chat.ChatCompletionChoice;
@@ -116,6 +117,8 @@ public class ChatGptBackend {
                         .messages(context)
                         .n(1)
                         .build();
+
+                EventBus.getDefault().post(new IsLoadingEvent());
 
                 try {
                     ChatCompletionResult result = service.createChatCompletion(chatCompletionRequest);
