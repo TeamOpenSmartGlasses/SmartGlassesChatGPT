@@ -51,7 +51,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
     private boolean useAutoSend;
     private ArrayList<String> commandWords;
     private String scrollingTextTitle = "";
-    private final int messageDisplayDurationMs = 3000;
+    private final int messageDisplayDurationMs = 4000;
     private Timer loadingTimer;
 
     public ChatGptService(){
@@ -340,7 +340,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
         printExecutorService.execute(() -> {
             String[] words = message.split("\\s+");
             int wordCount = words.length;
-            int groupSize = 20; // depends on glasses size
+            int groupSize = 15; // depends on glasses size
 
             for (int i = 0; i < wordCount; i += groupSize) {
                 // Check if the background thread has been interrupted
@@ -353,6 +353,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
                 String groupText = String.join(" ", group);
 
                 if (!chatGptLabelSet) {
+//                    Log.d(TAG, "chunkLongMessagesAndDisplay: " + groupText.trim());
                     sgmLib.pushScrollingText("ChatGpt: " + groupText.trim());
                     chatGptLabelSet = true;
                 } else {
