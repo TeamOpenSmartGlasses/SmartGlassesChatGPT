@@ -84,15 +84,15 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/textView_systemPrompt" />
 
+
             <TextView
                 android:id="@+id/textView_message_sending_method"
                 android:layout_width="243dp"
                 android:layout_height="38dp"
-                android:layout_marginTop="32dp"
+                android:layout_marginTop="56dp"
                 android:text="@string/message_sending_method"
                 android:textSize="20sp"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintHorizontal_bias="0.315"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/editTextTextMultiLine_systemPrompt" />
 
@@ -100,9 +100,9 @@
                 android:id="@+id/radioGroup_sendMethod"
                 android:layout_width="270dp"
                 android:layout_height="111dp"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="12dp"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintHorizontal_bias="0.375"
+                app:layout_constraintHorizontal_bias="0.496"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/textView_message_sending_method">
 
@@ -122,6 +122,19 @@
                     tools:layout_editor_absoluteX="88dp" />
 
             </RadioGroup>
+            <Button
+                android:id="@+id/add_prompt"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="32dp"
+                android:layout_marginBottom="32dp"
+                android:text="@string/add_prompt"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.184"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/radioGroup_sendMethod"
+                app:layout_constraintVertical_bias="0.111" />
 
             <Button
                 android:id="@+id/submit_button"
@@ -132,10 +145,10 @@
                 android:text="@string/submit"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintHorizontal_bias="0.498"
+                app:layout_constraintHorizontal_bias="0.803"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/radioGroup_sendMethod"
-                app:layout_constraintVertical_bias="0.0" />
+                app:layout_constraintVertical_bias="0.111" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 

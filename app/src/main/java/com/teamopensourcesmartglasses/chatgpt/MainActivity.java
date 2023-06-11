@@ -13,6 +13,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.os.IBinder;
 import android.util.Log;
 
+import android.view.View;
+
 import org.greenrobot.eventbus.EventBus;
 import com.teamopensourcesmartglasses.chatgpt.databinding.ActivityMainBinding;
 import com.teamopensourcesmartglasses.chatgpt.events.UserSettingsChangedEvent;
@@ -30,6 +32,7 @@ public class MainActivity extends AppCompatActivity {
     public ChatGptService mService;
     private ActivityMainBinding binding;
     private Button submitButton;
+    private Button addPromptButton;
     private EditText openAiKeyText;
     private RadioButton autoSendRadioButton;
     private RadioButton manualSendRadioButton;
@@ -97,6 +100,16 @@ public class MainActivity extends AppCompatActivity {
             // Toast to inform user that key has been saved
             Toast.makeText(this, "Overall settings changed", Toast.LENGTH_LONG).show();
             Toast.makeText(this, "OpenAi key saved for future sessions", Toast.LENGTH_LONG).show();
+        });
+
+        addPromptButton = findViewById(R.id.add_prompt);
+        addPromptButton.setOnClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View v){
+                Intent intent = new Intent(MainActivity.this, Add_Prompt.class);
+                startActivity(intent);
+            }
         });
     }
 
