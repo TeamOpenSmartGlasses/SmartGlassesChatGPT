@@ -7,7 +7,7 @@
     tools:context=".Add_Prompt">
 
     <TextView
-        android:id="@+id/textView"
+        android:id="@+id/addPromptTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="140dp"
@@ -17,4 +17,50 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <TextView
+        android:id="@+id/addPromptTextView_createPromptLabel"
+        android:layout_width="204dp"
+        android:layout_height="40dp"
+        android:layout_marginTop="36dp"
+        android:text="@string/create_prompt"
+        android:textSize="20sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.311"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/addPromptTextView" />
+
+    <EditText
+        android:id="@+id/addPromptTextView_createPrompt"
+        android:layout_width="308dp"
+        android:layout_height="48dp"
+        android:layout_marginTop="4dp"
+        android:autofillHints="createPrompt"
+        android:hint="@string/prompt_hint"
+        android:inputType="text"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.495"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/addPromptTextView_createPromptLabel"
+        tools:ignore="LabelFor,MissingConstraints,TextFields" />
+
+    <Button
+        android:id="@+id/addPromptButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:text="@string/add_prompt"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.498"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/addPromptTextView_createPrompt" />
+
+    <RadioGroup
+        android:id="@+id/radioGroupPrompts"
+        android:layout_width="270dp"
+        android:layout_height="111dp"
+        android:layout_marginTop="12dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.496"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/addPromptButton" />
 </androidx.constraintlayout.widget.ConstraintLayout>
