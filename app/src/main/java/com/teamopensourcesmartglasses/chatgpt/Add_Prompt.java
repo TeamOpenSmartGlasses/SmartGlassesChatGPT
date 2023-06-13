@@ -4,8 +4,11 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.room.Room;
 
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.DialogInterface;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -17,21 +20,26 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.teamopensourcesmartglasses.chatgpt.dao.PromptDao;
 import com.teamopensourcesmartglasses.chatgpt.database.PromptDatabase;
 import com.teamopensourcesmartglasses.chatgpt.entities.Prompt;
+import com.teamopensourcesmartglasses.chatgpt.events.UserSettingsChangedEvent;
+
+import org.greenrobot.eventbus.EventBus;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public class Add_Prompt extends AppCompatActivity {
 
     private PromptDao promptDao;
     private RadioGroup radioGroupPrompts;
-    private FloatingActionButton addPromptFab;
     private EditText titleEditText;
     private EditText descriptionEditText;
     private Button closeButton;
 
     private List<Prompt> prompts = new ArrayList<>();
     private static final int MAX_PROMPTS = 10;
+    private HashMap<Integer, String> radioButtonDescriptions = new HashMap<>();
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,7 +48,7 @@ public class Add_Prompt extends AppCompatActivity {
 
         // Initialize the views
         radioGroupPrompts = findViewById(R.id.radioGroupPrompts);
-        addPromptFab = findViewById(R.id.addPromptFab);
+        FloatingActionButton addPromptFab = findViewById(R.id.addPromptFab);
         titleEditText = findViewById(R.id.titleEditText);
         descriptionEditText = findViewById(R.id.descriptionEditText);
         closeButton = findViewById(R.id.closeButton);
@@ -85,20 +93,42 @@ public class Add_Prompt extends AppCompatActivity {
                 closeButton.setVisibility(View.GONE);
             }
         });
+
+        radioGroupPrompts.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(RadioGroup group, int checkedId) {
+                String selectedDescription = radioButtonDescriptions.get(checkedId);
+                if (selectedDescription != null) {
+                    // Save the new system prompt
+                    SharedPreferences sharedPreferences = getSharedPreferences("user.config", Context.MODE_PRIVATE);
+                    SharedPreferences.Editor editor = sharedPreferences.edit();
+                    editor.putString("systemPrompt", selectedDescription);
+                    editor.apply();
+
+                    // Notify the rest of the app about the change
+                    EventBus.getDefault().post(new UserSettingsChangedEvent(
+                            sharedPreferences.getString("openAiKey", ""),
+                            selectedDescription,
+                            sharedPreferences.getBoolean("autoSendMessages", true)
+                    ));
+                }
+            }
+        });
     }
 
     private void loadPrompts() {
-        // Fetch the prompts from the database in a background thread
         new Thread(new Runnable() {
             @Override
             public void run() {
-                prompts = promptDao.getPromptsOrderedById();
-
-                // Update UI on the main thread
+                final List<Prompt> savedPrompts = promptDao.getPromptsOrderedByTitle();
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        for (Prompt prompt : prompts) {
+                        radioGroupPrompts.removeAllViews();
+                        radioButtonDescriptions.clear();
+                        prompts.clear();
+
+                        for (final Prompt prompt : savedPrompts) {
                             // Create a new RadioButton and add it to the RadioGroup
                             RadioButton radioButton = new RadioButton(Add_Prompt.this);
                             radioButton.setText(prompt.getTitle());
@@ -113,6 +143,7 @@ public class Add_Prompt extends AppCompatActivity {
                                                     deletePrompt(prompt);
                                                     radioGroupPrompts.removeView(radioButton);
                                                     prompts.remove(prompt);
+                                                    radioButtonDescriptions.remove(radioButton.getId());
                                                     Toast.makeText(Add_Prompt.this, "Prompt deleted successfully", Toast.LENGTH_SHORT).show();
                                                 }
                                             })
@@ -122,6 +153,10 @@ public class Add_Prompt extends AppCompatActivity {
                                 }
                             });
                             radioGroupPrompts.addView(radioButton);
+
+                            radioButtonDescriptions.put(radioButton.getId(), prompt.getPrompt());
+
+                            prompts.add(prompt);
                         }
                     }
                 });
@@ -157,6 +192,7 @@ public class Add_Prompt extends AppCompatActivity {
                                                 deletePrompt(prompt);
                                                 radioGroupPrompts.removeView(radioButton);
                                                 prompts.remove(prompt);
+                                                radioButtonDescriptions.remove(radioButton.getId());
                                                 Toast.makeText(Add_Prompt.this, "Prompt deleted successfully", Toast.LENGTH_SHORT).show();
                                             }
                                         })
@@ -166,7 +202,7 @@ public class Add_Prompt extends AppCompatActivity {
                             }
                         });
                         radioGroupPrompts.addView(radioButton);
-
+                        radioButtonDescriptions.put(radioButton.getId(), description);
                         // Add prompt to the prompts list
                         prompts.add(prompt);
                     }
