@@ -8,7 +8,6 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -36,9 +35,9 @@ public class Add_Prompt extends AppCompatActivity {
     private EditText descriptionEditText;
     private Button closeButton;
 
-    private List<Prompt> prompts = new ArrayList<>();
+    private final List<Prompt> prompts = new ArrayList<>();
     private static final int MAX_PROMPTS = 10;
-    private HashMap<Integer, String> radioButtonDescriptions = new HashMap<>();
+    private final HashMap<Integer, String> radioButtonDescriptions = new HashMap<>();
 
 
     @Override
@@ -98,11 +97,13 @@ public class Add_Prompt extends AppCompatActivity {
             @Override
             public void onCheckedChanged(RadioGroup group, int checkedId) {
                 String selectedDescription = radioButtonDescriptions.get(checkedId);
+                String selectedTitle = ((RadioButton) findViewById(checkedId)).getText().toString();
                 if (selectedDescription != null) {
                     // Save the new system prompt
                     SharedPreferences sharedPreferences = getSharedPreferences("user.config", Context.MODE_PRIVATE);
                     SharedPreferences.Editor editor = sharedPreferences.edit();
                     editor.putString("systemPrompt", selectedDescription);
+                    editor.putString("systemPromptTitle", selectedTitle);
                     editor.apply();
 
                     // Notify the rest of the app about the change
@@ -121,6 +122,7 @@ public class Add_Prompt extends AppCompatActivity {
             @Override
             public void run() {
                 final List<Prompt> savedPrompts = promptDao.getPromptsOrderedByTitle();
+                final String savedPromptTitle = getSharedPreferences("user.config", Context.MODE_PRIVATE).getString("systemPromptTitle", "");
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -130,7 +132,7 @@ public class Add_Prompt extends AppCompatActivity {
 
                         for (final Prompt prompt : savedPrompts) {
                             // Create a new RadioButton and add it to the RadioGroup
-                            RadioButton radioButton = new RadioButton(Add_Prompt.this);
+                            final RadioButton radioButton = new RadioButton(Add_Prompt.this);
                             radioButton.setText(prompt.getTitle());
                             radioButton.setOnLongClickListener(new View.OnLongClickListener() {
                                 @Override
@@ -154,8 +156,12 @@ public class Add_Prompt extends AppCompatActivity {
                             });
                             radioGroupPrompts.addView(radioButton);
 
-                            radioButtonDescriptions.put(radioButton.getId(), prompt.getPrompt());
+                            // Check if this radio button should be checked
+                            if (prompt.getTitle().equals(savedPromptTitle)) {
+                                radioButton.setChecked(true);
+                            }
 
+                            radioButtonDescriptions.put(radioButton.getId(), prompt.getPrompt());
                             prompts.add(prompt);
                         }
                     }
