@@ -46,6 +46,9 @@ public class Add_Prompt extends AppCompatActivity {
         PromptDatabase db = Room.databaseBuilder(getApplicationContext(), PromptDatabase.class, "prompt-database").build();
         promptDao = db.getPromptDao();
 
+        // Load the saved prompts
+        loadPrompts();
+
         // Set up the FAB click listener
         addPromptFab.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -75,6 +78,29 @@ public class Add_Prompt extends AppCompatActivity {
                 closeButton.setVisibility(View.GONE);
             }
         });
+    }
+
+    private void loadPrompts() {
+        // Fetch the prompts from the database in a background thread
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                prompts = promptDao.getPromptsOrderedById();
+
+                // Update UI on the main thread
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        for (Prompt prompt : prompts) {
+                            // Create a new RadioButton and add it to the RadioGroup
+                            RadioButton radioButton = new RadioButton(Add_Prompt.this);
+                            radioButton.setText(prompt.getTitle());
+                            radioGroupPrompts.addView(radioButton);
+                        }
+                    }
+                });
+            }
+        }).start();
     }
 
     private void addNewPrompt(String title, String description) {

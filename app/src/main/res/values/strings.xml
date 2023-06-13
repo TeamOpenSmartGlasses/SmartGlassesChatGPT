@@ -18,4 +18,5 @@
     <string name="enter_your_system_prompt_here">Enter your system prompt here</string>
     <string name="app_settings">App Settings</string>
     <string name="create_prompt">Create a New Prompt:</string>
+    <string name="prompt_list">Prompt List</string>
 </resources>

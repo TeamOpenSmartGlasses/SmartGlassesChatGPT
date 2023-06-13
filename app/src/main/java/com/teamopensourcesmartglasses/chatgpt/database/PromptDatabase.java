@@ -10,4 +10,5 @@ import com.teamopensourcesmartglasses.chatgpt.entities.Prompt;
 public abstract class PromptDatabase extends RoomDatabase {
 
     public abstract PromptDao getPromptDao();
+    private PromptDao promptDao;
 }
