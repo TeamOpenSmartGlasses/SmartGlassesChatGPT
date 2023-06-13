@@ -3,6 +3,8 @@ package com.teamopensourcesmartglasses.chatgpt;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.room.Room;
 
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -29,6 +31,7 @@ public class Add_Prompt extends AppCompatActivity {
     private Button closeButton;
 
     private List<Prompt> prompts = new ArrayList<>();
+    private static final int MAX_PROMPTS = 10;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,6 +56,10 @@ public class Add_Prompt extends AppCompatActivity {
         addPromptFab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                if(prompts.size() >= MAX_PROMPTS) {
+                    Toast.makeText(Add_Prompt.this, "Maximum number of prompts reached", Toast.LENGTH_SHORT).show();
+                    return;
+                }
                 titleEditText.setVisibility(View.VISIBLE);
                 descriptionEditText.setVisibility(View.VISIBLE);
                 closeButton.setVisibility(View.VISIBLE);
@@ -95,6 +102,25 @@ public class Add_Prompt extends AppCompatActivity {
                             // Create a new RadioButton and add it to the RadioGroup
                             RadioButton radioButton = new RadioButton(Add_Prompt.this);
                             radioButton.setText(prompt.getTitle());
+                            radioButton.setOnLongClickListener(new View.OnLongClickListener() {
+                                @Override
+                                public boolean onLongClick(View view) {
+                                    AlertDialog.Builder builder = new AlertDialog.Builder(Add_Prompt.this);
+                                    builder.setMessage("Do you want to delete this prompt?")
+                                            .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                                                @Override
+                                                public void onClick(DialogInterface dialog, int which) {
+                                                    deletePrompt(prompt);
+                                                    radioGroupPrompts.removeView(radioButton);
+                                                    prompts.remove(prompt);
+                                                    Toast.makeText(Add_Prompt.this, "Prompt deleted successfully", Toast.LENGTH_SHORT).show();
+                                                }
+                                            })
+                                            .setNegativeButton("No", null)
+                                            .show();
+                                    return true;
+                                }
+                            });
                             radioGroupPrompts.addView(radioButton);
                         }
                     }
@@ -120,12 +146,40 @@ public class Add_Prompt extends AppCompatActivity {
                         // Create a new RadioButton and add it to the RadioGroup
                         RadioButton radioButton = new RadioButton(Add_Prompt.this);
                         radioButton.setText(title);
+                        radioButton.setOnLongClickListener(new View.OnLongClickListener() {
+                            @Override
+                            public boolean onLongClick(View view) {
+                                AlertDialog.Builder builder = new AlertDialog.Builder(Add_Prompt.this);
+                                builder.setMessage("Do you want to delete this prompt?")
+                                        .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                                            @Override
+                                            public void onClick(DialogInterface dialog, int which) {
+                                                deletePrompt(prompt);
+                                                radioGroupPrompts.removeView(radioButton);
+                                                prompts.remove(prompt);
+                                                Toast.makeText(Add_Prompt.this, "Prompt deleted successfully", Toast.LENGTH_SHORT).show();
+                                            }
+                                        })
+                                        .setNegativeButton("No", null)
+                                        .show();
+                                return true;
+                            }
+                        });
                         radioGroupPrompts.addView(radioButton);
 
                         // Add prompt to the prompts list
                         prompts.add(prompt);
                     }
                 });
+            }
+        }).start();
+    }
+
+    private void deletePrompt(Prompt prompt) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                promptDao.deletePrompt(prompt);
             }
         }).start();
     }
