@@ -27,18 +27,18 @@ public class ChatGptBackend {
     private OpenAiService service;
 //    private final List<ChatMessage> messages = new ArrayList<>();
     private final MessageStore messages;
-    // private StringBuffer responseMessageBuffer = new StringBuffer();
-    private final int chatGptMaxTokenSize = 3500; // let's play safe and use the 3500 out of 4096, we will leave 500 for custom hardcoded prompts
-    private final int messageDefaultWordsChunkSize = 100;
-    private final int openAiServiceTimeoutDuration = 110;
     private StringBuffer recordingBuffer = new StringBuffer();
 
     public ChatGptBackend(){
+        // private StringBuffer responseMessageBuffer = new StringBuffer();
+        // let's play safe and use the 3500 out of 4096, we will leave 500 for custom hardcoded prompts
+        int chatGptMaxTokenSize = 3500;
         messages = new MessageStore(chatGptMaxTokenSize);
     }
 
     public void initChatGptService(String token, String systemMessage) {
         // Setup ChatGpt with a token
+        int openAiServiceTimeoutDuration = 110;
         service = new OpenAiService(token, Duration.ofSeconds(openAiServiceTimeoutDuration));
         messages.setSystemMessage(systemMessage);
     }
@@ -51,6 +51,7 @@ public class ChatGptBackend {
         recordingBuffer.append(" ");
         Log.d(TAG, "sendChatToMemory: " + recordingBuffer);
 
+        int messageDefaultWordsChunkSize = 100;
         if (getWordCount(recordingBuffer.toString()) > messageDefaultWordsChunkSize) {
             Log.d(TAG, "sendChatToMemory: size is big enough to be a chunk");
             messages.addMessage(ChatMessageRole.USER.value(), recordingBuffer.toString());

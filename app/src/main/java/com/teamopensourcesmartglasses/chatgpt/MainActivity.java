@@ -22,27 +22,21 @@ import com.teamopensourcesmartglasses.chatgpt.events.UserSettingsChangedEvent;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.RadioButton;
-import android.widget.RadioGroup;
 import android.widget.Toast;
 
 public class MainActivity extends AppCompatActivity {
 
-    private final String TAG = "SmartGlassesChatGpt_MainActivity";
     boolean mBound;
     public ChatGptService mService;
-    private ActivityMainBinding binding;
-    private Button submitButton;
-    private Button addPromptButton;
     private EditText openAiKeyText;
     private RadioButton autoSendRadioButton;
-    private RadioButton manualSendRadioButton;
     private EditText systemPromptInput;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        binding = ActivityMainBinding.inflate(getLayoutInflater());
+        com.teamopensourcesmartglasses.chatgpt.databinding.ActivityMainBinding binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
         setSupportActionBar(binding.toolbar);
 
@@ -67,13 +61,13 @@ public class MainActivity extends AppCompatActivity {
         systemPromptInput.setText(savedSystemPrompt);
 
         autoSendRadioButton = findViewById(R.id.radioButton_autoSend);
-        manualSendRadioButton = findViewById(R.id.radioButton_manualSend);
+        RadioButton manualSendRadioButton = findViewById(R.id.radioButton_manualSend);
         boolean useAutoSendMethod = sharedPreferences.getBoolean("autoSendMessages", true);
         autoSendRadioButton.setChecked(useAutoSendMethod);
         manualSendRadioButton.setChecked(!useAutoSendMethod);
 
         // UI handlers
-        submitButton = findViewById(R.id.submit_button);
+        Button submitButton = findViewById(R.id.submit_button);
         submitButton.setOnClickListener((v) -> {
             // Save to shared preference
             SharedPreferences.Editor editor = sharedPreferences.edit();
@@ -102,12 +96,12 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, "OpenAi key saved for future sessions", Toast.LENGTH_LONG).show();
         });
 
-        addPromptButton = findViewById(R.id.add_prompt);
+        Button addPromptButton = findViewById(R.id.add_prompt);
         addPromptButton.setOnClickListener(new View.OnClickListener() {
 
             @Override
             public void onClick(View v){
-                Intent intent = new Intent(MainActivity.this, Add_Prompt.class);
+                Intent intent = new Intent(MainActivity.this, AddPrompt.class);
                 startActivity(intent);
             }
         });
@@ -146,6 +140,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void startChatGptService() {
+        String TAG = "SmartGlassesChatGpt_MainActivity";
         if (isMyServiceRunning(ChatGptService.class)){
             Log.d(TAG, "Not starting service.");
             return;

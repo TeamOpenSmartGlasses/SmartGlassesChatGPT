@@ -19,6 +19,8 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.teamopensourcesmartglasses.chatgpt.dao.PromptDao;
 import com.teamopensourcesmartglasses.chatgpt.database.PromptDatabase;
 import com.teamopensourcesmartglasses.chatgpt.entities.Prompt;
+import com.teamopensourcesmartglasses.chatgpt.events.PromptAddedEvent;
+import com.teamopensourcesmartglasses.chatgpt.events.PromptDeletedEvent;
 import com.teamopensourcesmartglasses.chatgpt.events.UserSettingsChangedEvent;
 
 import org.greenrobot.eventbus.EventBus;
@@ -27,7 +29,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-public class Add_Prompt extends AppCompatActivity {
+public class AddPrompt extends AppCompatActivity {
 
     private PromptDao promptDao;
     private RadioGroup radioGroupPrompts;
@@ -64,7 +66,7 @@ public class Add_Prompt extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 if(prompts.size() >= MAX_PROMPTS) {
-                    Toast.makeText(Add_Prompt.this, "Maximum number of prompts reached", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(AddPrompt.this, "Maximum number of prompts reached", Toast.LENGTH_SHORT).show();
                     return;
                 }
                 titleEditText.setVisibility(View.VISIBLE);
@@ -81,9 +83,9 @@ public class Add_Prompt extends AppCompatActivity {
 
                 if (!title.isEmpty() && !description.isEmpty()) {
                     addNewPrompt(title, description);
-                    Toast.makeText(Add_Prompt.this, "Prompt added successfully", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(AddPrompt.this, "Prompt added successfully", Toast.LENGTH_SHORT).show();
                 } else {
-                    Toast.makeText(Add_Prompt.this, "Please fill out both fields", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(AddPrompt.this, "Please fill out both fields", Toast.LENGTH_SHORT).show();
                 }
                 titleEditText.setText("");
                 descriptionEditText.setText("");
@@ -132,12 +134,12 @@ public class Add_Prompt extends AppCompatActivity {
 
                         for (final Prompt prompt : savedPrompts) {
                             // Create a new RadioButton and add it to the RadioGroup
-                            final RadioButton radioButton = new RadioButton(Add_Prompt.this);
+                            final RadioButton radioButton = new RadioButton(AddPrompt.this);
                             radioButton.setText(prompt.getTitle());
                             radioButton.setOnLongClickListener(new View.OnLongClickListener() {
                                 @Override
                                 public boolean onLongClick(View view) {
-                                    AlertDialog.Builder builder = new AlertDialog.Builder(Add_Prompt.this);
+                                    AlertDialog.Builder builder = new AlertDialog.Builder(AddPrompt.this);
                                     builder.setMessage("Do you want to delete this prompt?")
                                             .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
                                                 @Override
@@ -146,7 +148,7 @@ public class Add_Prompt extends AppCompatActivity {
                                                     radioGroupPrompts.removeView(radioButton);
                                                     prompts.remove(prompt);
                                                     radioButtonDescriptions.remove(radioButton.getId());
-                                                    Toast.makeText(Add_Prompt.this, "Prompt deleted successfully", Toast.LENGTH_SHORT).show();
+                                                    Toast.makeText(AddPrompt.this, "Prompt deleted successfully", Toast.LENGTH_SHORT).show();
                                                 }
                                             })
                                             .setNegativeButton("No", null)
@@ -180,17 +182,20 @@ public class Add_Prompt extends AppCompatActivity {
             public void run() {
                 promptDao.insertPrompt(prompt);
 
+                // Post event to EventBus
+                EventBus.getDefault().post(new PromptAddedEvent(prompt));
+
                 // Update UI on the main thread
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
                         // Create a new RadioButton and add it to the RadioGroup
-                        RadioButton radioButton = new RadioButton(Add_Prompt.this);
+                        RadioButton radioButton = new RadioButton(AddPrompt.this);
                         radioButton.setText(title);
                         radioButton.setOnLongClickListener(new View.OnLongClickListener() {
                             @Override
                             public boolean onLongClick(View view) {
-                                AlertDialog.Builder builder = new AlertDialog.Builder(Add_Prompt.this);
+                                AlertDialog.Builder builder = new AlertDialog.Builder(AddPrompt.this);
                                 builder.setMessage("Do you want to delete this prompt?")
                                         .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
                                             @Override
@@ -199,7 +204,7 @@ public class Add_Prompt extends AppCompatActivity {
                                                 radioGroupPrompts.removeView(radioButton);
                                                 prompts.remove(prompt);
                                                 radioButtonDescriptions.remove(radioButton.getId());
-                                                Toast.makeText(Add_Prompt.this, "Prompt deleted successfully", Toast.LENGTH_SHORT).show();
+                                                Toast.makeText(AddPrompt.this, "Prompt deleted successfully", Toast.LENGTH_SHORT).show();
                                             }
                                         })
                                         .setNegativeButton("No", null)
@@ -217,11 +222,14 @@ public class Add_Prompt extends AppCompatActivity {
         }).start();
     }
 
-    private void deletePrompt(Prompt prompt) {
+    private void deletePrompt(final Prompt prompt) {
         new Thread(new Runnable() {
             @Override
             public void run() {
                 promptDao.deletePrompt(prompt);
+
+                // Post event to EventBus
+                EventBus.getDefault().post(new PromptDeletedEvent(prompt));
             }
         }).start();
     }
