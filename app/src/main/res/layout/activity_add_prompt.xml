@@ -30,9 +30,9 @@
         android:id="@+id/titleEditText"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:hint="Enter prompt title"
-        android:layout_marginTop="12dp"
+        android:hint="@string/enter_prompt_title"
         android:visibility="gone"
+        android:layout_marginTop="12dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/radioGroupPrompts" />
@@ -41,12 +41,35 @@
         android:id="@+id/descriptionEditText"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:hint="Enter prompt description"
-        android:layout_marginTop="8dp"
+        android:hint="@string/enter_prompt_description"
         android:visibility="gone"
+        android:layout_marginTop="8dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/titleEditText" />
+
+
+    <Button
+        android:id="@+id/closeButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="96dp"
+        android:layout_marginTop="16dp"
+        android:visibility="gone"
+        android:text="@string/close"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/descriptionEditText" />
+
+    <Button
+        android:id="@+id/okButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="96dp"
+        android:visibility="gone"
+        android:text="@string/add"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/descriptionEditText" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/addPromptFab"
@@ -56,17 +79,8 @@
         android:clickable="true"
         android:src="@android:drawable/ic_input_add"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintEnd_toEndOf="parent"
+        android:contentDescription="@string/todo" />
 
-    <Button
-        android:id="@+id/closeButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Close"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="16dp"
-        android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/addPromptFab" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

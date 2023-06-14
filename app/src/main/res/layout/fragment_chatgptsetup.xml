@@ -60,6 +60,7 @@
                 android:layout_height="39dp"
                 android:layout_marginTop="32dp"
                 android:text="@string/system_prompt"
+                android:visibility="gone"
                 android:textSize="20sp"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintHorizontal_bias="0.222"
@@ -75,6 +76,7 @@
                 android:ems="10"
                 android:gravity="start|top"
                 android:hint="@string/enter_your_system_prompt_here"
+                android:visibility="gone"
                 android:inputType="textMultiLine"
                 android:lines="3"
                 android:maxLines="6"
@@ -89,12 +91,12 @@
                 android:id="@+id/textView_message_sending_method"
                 android:layout_width="243dp"
                 android:layout_height="38dp"
-                android:layout_marginTop="56dp"
+                android:layout_marginTop="36dp"
                 android:text="@string/message_sending_method"
                 android:textSize="20sp"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/editTextTextMultiLine_systemPrompt" />
+                app:layout_constraintTop_toBottomOf="@+id/edittext_openAiKey" />
 
             <RadioGroup
                 android:id="@+id/radioGroup_sendMethod"
@@ -122,19 +124,20 @@
                     tools:layout_editor_absoluteX="88dp" />
 
             </RadioGroup>
+
             <Button
                 android:id="@+id/add_prompt"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="32dp"
                 android:layout_marginBottom="32dp"
-                android:text="@string/add_prompt"
+                android:text="@string/select_prompt"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintHorizontal_bias="0.184"
+                app:layout_constraintHorizontal_bias="0.146"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/radioGroup_sendMethod"
-                app:layout_constraintVertical_bias="0.111" />
+                app:layout_constraintVertical_bias="0.108" />
 
             <Button
                 android:id="@+id/submit_button"
@@ -145,10 +148,10 @@
                 android:text="@string/submit"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintHorizontal_bias="0.803"
+                app:layout_constraintHorizontal_bias="0.872"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/radioGroup_sendMethod"
-                app:layout_constraintVertical_bias="0.111" />
+                app:layout_constraintVertical_bias="0.108" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 

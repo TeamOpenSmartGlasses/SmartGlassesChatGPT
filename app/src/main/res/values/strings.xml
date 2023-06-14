@@ -19,4 +19,11 @@
     <string name="app_settings">App Settings</string>
     <string name="create_prompt">Create a New Prompt:</string>
     <string name="prompt_list">Prompt List</string>
+    <string name="ok">OK</string>
+    <string name="enter_prompt_title">Enter prompt title</string>
+    <string name="enter_prompt_description">Enter prompt description</string>
+    <string name="close">Close</string>
+    <string name="add">Add</string>
+    <string name="todo">TODO</string>
+    <string name="select_prompt">Select Prompt</string>
 </resources>

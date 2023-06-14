@@ -36,6 +36,7 @@ public class AddPrompt extends AppCompatActivity {
     private EditText titleEditText;
     private EditText descriptionEditText;
     private Button closeButton;
+    private Button okButton;
 
     private final List<Prompt> prompts = new ArrayList<>();
     private static final int MAX_PROMPTS = 10;
@@ -53,6 +54,7 @@ public class AddPrompt extends AppCompatActivity {
         titleEditText = findViewById(R.id.titleEditText);
         descriptionEditText = findViewById(R.id.descriptionEditText);
         closeButton = findViewById(R.id.closeButton);
+        okButton = findViewById(R.id.okButton);
 
         // Initialize the database and get the DAO
         PromptDatabase db = Room.databaseBuilder(getApplicationContext(), PromptDatabase.class, "prompt-database").build();
@@ -61,21 +63,20 @@ public class AddPrompt extends AppCompatActivity {
         // Load the saved prompts
         loadPrompts();
 
-        // Set up the FAB click listener
-        addPromptFab.setOnClickListener(new View.OnClickListener() {
+
+        closeButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if(prompts.size() >= MAX_PROMPTS) {
-                    Toast.makeText(AddPrompt.this, "Maximum number of prompts reached", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                titleEditText.setVisibility(View.VISIBLE);
-                descriptionEditText.setVisibility(View.VISIBLE);
-                closeButton.setVisibility(View.VISIBLE);
+                titleEditText.setText("");
+                descriptionEditText.setText("");
+                titleEditText.setVisibility(View.GONE);
+                descriptionEditText.setVisibility(View.GONE);
+                closeButton.setVisibility(View.GONE);
+                okButton.setVisibility(View.GONE);
             }
         });
 
-        closeButton.setOnClickListener(new View.OnClickListener() {
+        okButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 String title = titleEditText.getText().toString();
@@ -92,6 +93,37 @@ public class AddPrompt extends AppCompatActivity {
                 titleEditText.setVisibility(View.GONE);
                 descriptionEditText.setVisibility(View.GONE);
                 closeButton.setVisibility(View.GONE);
+                okButton.setVisibility(View.GONE);
+            }
+        });
+
+        // When the addPromptFab is clicked, make sure the okButton is also visible
+        addPromptFab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(prompts.size() >= MAX_PROMPTS) {
+                    Toast.makeText(AddPrompt.this, "Maximum number of prompts reached", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                titleEditText.setVisibility(View.VISIBLE);
+                descriptionEditText.setVisibility(View.VISIBLE);
+                closeButton.setVisibility(View.VISIBLE);
+                okButton.setVisibility(View.VISIBLE);
+            }
+        });
+
+        closeButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // Clear text fields
+                titleEditText.setText("");
+                descriptionEditText.setText("");
+
+                // Hide text fields and buttons
+                titleEditText.setVisibility(View.GONE);
+                descriptionEditText.setVisibility(View.GONE);
+                closeButton.setVisibility(View.GONE);
+                okButton.setVisibility(View.GONE);
             }
         });
 
