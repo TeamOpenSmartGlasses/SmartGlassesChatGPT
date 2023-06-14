@@ -15,7 +15,7 @@
         android:theme="@style/Theme.Chatgpt"
         tools:targetApi="31">
         <activity
-            android:name=".Add_Prompt"
+            android:name=".AddPrompt"
             android:exported="false" />
         <activity
             android:name=".MainActivity"
