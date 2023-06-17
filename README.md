@@ -4,6 +4,10 @@ The main purpose of this project is to integrate ChatGPT with your smart glasses
 
 We can do a ton of things with ChatGpt already and having it right up our faces is a lot more efficient 😉
 
+## Intro video to the project
+
+[![Glasses Gpt Intro](http://img.youtube.com/vi/jFTYT9buA4k/0.jpg)](https://www.youtube.com/embed/jFTYT9buA4k)
+
 ## Installation
 
 - Install the [SmartGlassesManager](https://github.com/TeamOpenSmartGlasses/SmartGlassesManager) on your phone and make sure it's running
