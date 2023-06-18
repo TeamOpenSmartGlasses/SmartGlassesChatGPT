@@ -7,10 +7,13 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.Toast;
@@ -42,6 +45,8 @@ public class AddPrompt extends AppCompatActivity {
     private static final int MAX_PROMPTS = 10;
     private final HashMap<Integer, String> radioButtonDescriptions = new HashMap<>();
 
+    private boolean deleteMode = false;
+    FloatingActionButton deleteModeFab;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,16 +68,45 @@ public class AddPrompt extends AppCompatActivity {
         // Load the saved prompts
         loadPrompts();
 
+        deleteModeFab = findViewById(R.id.deleteModeFab);
+        // Fetching and storing original color at some initial setup phase
+        final ColorStateList originalColor = deleteModeFab.getBackgroundTintList();
+
+        deleteModeFab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // Toggle delete mode
+                deleteMode = !deleteMode;
+
+                if(deleteMode) {
+                    // Changing color of fab to indicate delete mode is on
+                    deleteModeFab.setBackgroundTintList(ColorStateList.valueOf(Color.rgb(200, 0, 150)));
+                    addPromptFab.setVisibility(View.GONE);
+                } else {
+                    // Resetting color back to original color
+                    deleteModeFab.setBackgroundTintList(originalColor);
+                    addPromptFab.setVisibility(View.VISIBLE);
+                }
+            }
+        });
+
+
+
 
         closeButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                // Clear text fields
                 titleEditText.setText("");
                 descriptionEditText.setText("");
+
+                // Hide text fields and buttons
                 titleEditText.setVisibility(View.GONE);
                 descriptionEditText.setVisibility(View.GONE);
                 closeButton.setVisibility(View.GONE);
                 okButton.setVisibility(View.GONE);
+                addPromptFab.setVisibility(View.VISIBLE);
+                deleteModeFab.setVisibility(View.VISIBLE);
             }
         });
 
@@ -94,6 +128,8 @@ public class AddPrompt extends AppCompatActivity {
                 descriptionEditText.setVisibility(View.GONE);
                 closeButton.setVisibility(View.GONE);
                 okButton.setVisibility(View.GONE);
+                addPromptFab.setVisibility(View.VISIBLE);
+                deleteModeFab.setVisibility(View.VISIBLE);
             }
         });
 
@@ -109,27 +145,32 @@ public class AddPrompt extends AppCompatActivity {
                 descriptionEditText.setVisibility(View.VISIBLE);
                 closeButton.setVisibility(View.VISIBLE);
                 okButton.setVisibility(View.VISIBLE);
-            }
-        });
-
-        closeButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                // Clear text fields
-                titleEditText.setText("");
-                descriptionEditText.setText("");
-
-                // Hide text fields and buttons
-                titleEditText.setVisibility(View.GONE);
-                descriptionEditText.setVisibility(View.GONE);
-                closeButton.setVisibility(View.GONE);
-                okButton.setVisibility(View.GONE);
+                addPromptFab.setVisibility(View.GONE);
+                deleteModeFab.setVisibility(View.GONE);
             }
         });
 
         radioGroupPrompts.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(RadioGroup group, int checkedId) {
+                if (deleteMode) {
+                    Prompt promptToDelete = null;
+                    for (Prompt prompt : prompts) {
+                        if (prompt.getTitle().equals(((RadioButton) findViewById(checkedId)).getText().toString())) {
+                            promptToDelete = prompt;
+                            break;
+                        }
+                    }
+
+                    if (promptToDelete != null) {
+                        deletePrompt(promptToDelete);
+                        radioGroupPrompts.removeView(findViewById(checkedId));
+                        prompts.remove(promptToDelete);
+                        radioButtonDescriptions.remove(checkedId);
+                        Toast.makeText(AddPrompt.this, "Prompt deleted successfully", Toast.LENGTH_SHORT).show();
+                    }
+                    return;
+                }
                 String selectedDescription = radioButtonDescriptions.get(checkedId);
                 String selectedTitle = ((RadioButton) findViewById(checkedId)).getText().toString();
                 if (selectedDescription != null) {
@@ -276,5 +317,4 @@ public class AddPrompt extends AppCompatActivity {
             }
         }).start();
     }
-
 }
