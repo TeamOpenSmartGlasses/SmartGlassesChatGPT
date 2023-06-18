@@ -198,6 +198,9 @@ public class AddPrompt extends AppCompatActivity {
                             radioButtonDescriptions.put(radioButton.getId(), prompt.getPrompt());
                             prompts.add(prompt);
                         }
+
+                        // Show a Toast message indicating the number of saved prompts
+                        Toast.makeText(AddPrompt.this, "Found " + savedPrompts.size() + " saved prompts", Toast.LENGTH_SHORT).show();
                     }
                 });
             }
@@ -262,7 +265,16 @@ public class AddPrompt extends AppCompatActivity {
 
                 // Post event to EventBus
                 EventBus.getDefault().post(new PromptDeletedEvent(prompt));
+
+                // Show Toast on the main thread after deleting the prompt
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(AddPrompt.this, "Prompt '" + prompt.getTitle() + "' deleted successfully", Toast.LENGTH_SHORT).show();
+                    }
+                });
             }
         }).start();
     }
+
 }

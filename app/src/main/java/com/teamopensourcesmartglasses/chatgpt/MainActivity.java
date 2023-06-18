@@ -31,12 +31,13 @@ public class MainActivity extends AppCompatActivity {
     private EditText openAiKeyText;
     private RadioButton autoSendRadioButton;
     private EditText systemPromptInput;
+    private ActivityMainBinding binding;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        com.teamopensourcesmartglasses.chatgpt.databinding.ActivityMainBinding binding = ActivityMainBinding.inflate(getLayoutInflater());
+        binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
         setSupportActionBar(binding.toolbar);
 

@@ -22,7 +22,4 @@ public interface PromptDao {
 
     @Query("SELECT * FROM Prompt ORDER BY title ASC")
     List<Prompt> getPromptsOrderedByTitle();
-
-    @Query("SELECT * FROM Prompt ORDER BY id ASC")
-    List<Prompt> getPromptsOrderedById();
 }
