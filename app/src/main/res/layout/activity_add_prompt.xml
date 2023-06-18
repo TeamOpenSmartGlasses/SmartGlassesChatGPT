@@ -31,7 +31,7 @@
             app:layout_constraintTop_toBottomOf="@+id/addPromptTextView" />
 
         <EditText
-            android:id="@+id/titleEditText"
+            android:id="@+id/promptTitle"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:hint="@string/enter_prompt_title"
@@ -43,7 +43,7 @@
             android:autofillHints="Enter Prompt Title" />
 
         <EditText
-            android:id="@+id/descriptionEditText"
+            android:id="@+id/promptDescription"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:hint="@string/enter_prompt_description"
@@ -51,7 +51,7 @@
             android:layout_marginTop="8dp"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/titleEditText"
+            app:layout_constraintTop_toBottomOf="@+id/promptTitle"
             android:autofillHints="Enter Prompt Description" />
 
 
@@ -63,7 +63,7 @@
             android:visibility="gone"
             android:text="@string/close"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/descriptionEditText" />
+            app:layout_constraintTop_toBottomOf="@+id/promptDescription" />
 
         <Button
             android:id="@+id/okButton"
@@ -73,7 +73,7 @@
             android:visibility="gone"
             android:text="@string/add"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/descriptionEditText" />
+            app:layout_constraintTop_toBottomOf="@+id/promptDescription" />
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/addPromptFab"

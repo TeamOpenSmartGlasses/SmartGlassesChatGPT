@@ -3,6 +3,7 @@ package com.teamopensourcesmartglasses.chatgpt;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.room.Room;
 
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -13,7 +14,6 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.Toast;
@@ -56,8 +56,8 @@ public class AddPrompt extends AppCompatActivity {
         // Initialize the views
         radioGroupPrompts = findViewById(R.id.radioGroupPrompts);
         FloatingActionButton addPromptFab = findViewById(R.id.addPromptFab);
-        titleEditText = findViewById(R.id.titleEditText);
-        descriptionEditText = findViewById(R.id.descriptionEditText);
+        titleEditText = findViewById(R.id.promptTitle);
+        descriptionEditText = findViewById(R.id.promptDescription);
         closeButton = findViewById(R.id.closeButton);
         okButton = findViewById(R.id.okButton);
 
@@ -89,9 +89,6 @@ public class AddPrompt extends AppCompatActivity {
                 }
             }
         });
-
-
-
 
         closeButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -187,6 +184,9 @@ public class AddPrompt extends AppCompatActivity {
                             selectedDescription,
                             sharedPreferences.getBoolean("autoSendMessages", true)
                     ));
+
+                    // Show a Toast message indicating the selected prompt
+                    Toast.makeText(AddPrompt.this, "Prompt '" + selectedTitle + "' selected", Toast.LENGTH_SHORT).show();
                 }
             }
         });
