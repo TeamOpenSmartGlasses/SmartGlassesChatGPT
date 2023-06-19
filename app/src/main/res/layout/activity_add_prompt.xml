@@ -7,6 +7,7 @@
     android:fillViewport="true">
 
     <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/parentConstraintLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:padding="16dp">
@@ -53,7 +54,6 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/promptTitle"
             android:autofillHints="Enter Prompt Description" />
-
 
         <Button
             android:id="@+id/closeButton"
@@ -102,6 +102,16 @@
             app:srcCompat="@android:drawable/ic_delete"
             android:contentDescription="@string/todo" />
 
+        <FrameLayout
+            android:id="@+id/fragment_container"
+            android:layout_width="402dp"
+            android:layout_height="246dp"
+            app:layout_constraintBottom_toTopOf="@+id/addPromptFab"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.444"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/okButton"
+            app:layout_constraintVertical_bias="0.031" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

@@ -26,4 +26,6 @@
     <string name="add">Add</string>
     <string name="todo">TODO</string>
     <string name="select_prompt">Select Prompt</string>
+    <string name="description">Description</string>
+    <string name="edit_prompt">Edit prompt</string>
 </resources>

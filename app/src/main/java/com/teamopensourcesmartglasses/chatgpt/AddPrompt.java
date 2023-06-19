@@ -1,16 +1,18 @@
 package com.teamopensourcesmartglasses.chatgpt;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.fragment.app.FragmentManager;
 import androidx.room.Room;
 
+
 import android.annotation.SuppressLint;
-import android.app.AlertDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -71,6 +73,30 @@ public class AddPrompt extends AppCompatActivity {
         deleteModeFab = findViewById(R.id.deleteModeFab);
         // Fetching and storing original color at some initial setup phase
         final ColorStateList originalColor = deleteModeFab.getBackgroundTintList();
+
+        // Get the ConstraintLayout
+        ConstraintLayout constraintLayout = findViewById(R.id.parentConstraintLayout);
+
+        // Set a touch listener to the ConstraintLayout
+        constraintLayout.setOnTouchListener(new View.OnTouchListener() {
+            @SuppressLint("ClickableViewAccessibility")
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                // Obtain FragmentManager
+                FragmentManager fragmentManager = getSupportFragmentManager();
+
+                // Get the fragment to remove
+                PromptDetailFragment fragment = (PromptDetailFragment) fragmentManager.findFragmentById(R.id.fragment_container);
+
+                // Remove the fragment if it's not null
+                if (fragment != null) {
+                    fragmentManager.beginTransaction().remove(fragment).commit();
+                }
+
+                return true;
+            }
+        });
+
 
         deleteModeFab.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -212,23 +238,22 @@ public class AddPrompt extends AppCompatActivity {
                             radioButton.setOnLongClickListener(new View.OnLongClickListener() {
                                 @Override
                                 public boolean onLongClick(View view) {
-                                    AlertDialog.Builder builder = new AlertDialog.Builder(AddPrompt.this);
-                                    builder.setMessage("Do you want to delete this prompt?")
-                                            .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-                                                @Override
-                                                public void onClick(DialogInterface dialog, int which) {
-                                                    deletePrompt(prompt);
-                                                    radioGroupPrompts.removeView(radioButton);
-                                                    prompts.remove(prompt);
-                                                    radioButtonDescriptions.remove(radioButton.getId());
-                                                    Toast.makeText(AddPrompt.this, "Prompt deleted successfully", Toast.LENGTH_SHORT).show();
-                                                }
-                                            })
-                                            .setNegativeButton("No", null)
-                                            .show();
+                                    Bundle bundle = new Bundle();
+                                    bundle.putString("title", prompt.getTitle());
+                                    bundle.putString("description", prompt.getPrompt());
+
+                                    PromptDetailFragment promptDetailFragment = new PromptDetailFragment();
+                                    promptDetailFragment.setArguments(bundle);
+
+                                    getSupportFragmentManager().beginTransaction()
+                                            .replace(R.id.fragment_container, promptDetailFragment)
+                                            .addToBackStack(null)
+                                            .commit();
+
                                     return true;
                                 }
                             });
+
                             radioGroupPrompts.addView(radioButton);
 
                             // Check if this radio button should be checked
@@ -271,23 +296,22 @@ public class AddPrompt extends AppCompatActivity {
                         radioButton.setOnLongClickListener(new View.OnLongClickListener() {
                             @Override
                             public boolean onLongClick(View view) {
-                                AlertDialog.Builder builder = new AlertDialog.Builder(AddPrompt.this);
-                                builder.setMessage("Do you want to delete this prompt?")
-                                        .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-                                            @Override
-                                            public void onClick(DialogInterface dialog, int which) {
-                                                deletePrompt(prompt);
-                                                radioGroupPrompts.removeView(radioButton);
-                                                prompts.remove(prompt);
-                                                radioButtonDescriptions.remove(radioButton.getId());
-                                                Toast.makeText(AddPrompt.this, "Prompt deleted successfully", Toast.LENGTH_SHORT).show();
-                                            }
-                                        })
-                                        .setNegativeButton("No", null)
-                                        .show();
+                                Bundle bundle = new Bundle();
+                                bundle.putString("title", prompt.getTitle());
+                                bundle.putString("description", prompt.getPrompt());
+
+                                PromptDetailFragment promptDetailFragment = new PromptDetailFragment();
+                                promptDetailFragment.setArguments(bundle);
+
+                                getSupportFragmentManager().beginTransaction()
+                                        .replace(R.id.fragment_container, promptDetailFragment)
+                                        .addToBackStack(null)
+                                        .commit();
+
                                 return true;
                             }
                         });
+
                         radioGroupPrompts.addView(radioButton);
                         radioButtonDescriptions.put(radioButton.getId(), description);
                         // Add prompt to the prompts list
