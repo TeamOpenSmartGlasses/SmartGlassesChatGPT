@@ -330,7 +330,7 @@ public class ChatGptService extends SmartGlassesAndroidService {
             loadingTimer.cancel();
             loadingTimer = null;
         }
-        chunkLongMessagesAndDisplay(event.message);
+        chunkLongMessagesAndDisplay(event.getMessage());
         userTurnLabelSet = false;
         mode = ChatGptAppMode.Conversation;
     }

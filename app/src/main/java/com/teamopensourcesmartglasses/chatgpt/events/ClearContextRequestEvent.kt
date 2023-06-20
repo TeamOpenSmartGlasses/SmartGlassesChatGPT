@@ -1,4 +1,3 @@
-package com.teamopensourcesmartglasses.chatgpt.events;
+package com.teamopensourcesmartglasses.chatgpt.events
 
-public class ClearContextRequestEvent {
-}
+class ClearContextRequestEvent 
