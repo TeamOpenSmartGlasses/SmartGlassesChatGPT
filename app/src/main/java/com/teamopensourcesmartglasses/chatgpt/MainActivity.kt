@@ -1,187 +1,175 @@
-package com.teamopensourcesmartglasses.chatgpt;
+package com.teamopensourcesmartglasses.chatgpt
 
-import android.app.ActivityManager;
-import android.content.ComponentName;
-import android.content.Context;
-import android.content.Intent;
-import android.content.ServiceConnection;
-import android.content.SharedPreferences;
-import android.os.Bundle;
+import android.app.ActivityManager
+import android.content.ComponentName
+import android.content.Intent
+import android.content.ServiceConnection
+import android.os.Bundle
+import android.os.IBinder
+import android.util.Log
+import android.view.View
+import android.widget.Button
+import android.widget.EditText
+import android.widget.RadioButton
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import com.teamopensourcesmartglasses.chatgpt.ChatGptService
+import com.teamopensourcesmartglasses.chatgpt.databinding.ActivityMainBinding
+import com.teamopensourcesmartglasses.chatgpt.events.UserSettingsChangedEvent
+import org.greenrobot.eventbus.EventBus
 
-import androidx.appcompat.app.AppCompatActivity;
-
-import android.os.IBinder;
-import android.util.Log;
-
-import org.greenrobot.eventbus.EventBus;
-import com.teamopensourcesmartglasses.chatgpt.databinding.ActivityMainBinding;
-import com.teamopensourcesmartglasses.chatgpt.events.UserSettingsChangedEvent;
-
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.RadioButton;
-import android.widget.RadioGroup;
-import android.widget.Toast;
-
-public class MainActivity extends AppCompatActivity {
-
-    private final String TAG = "SmartGlassesChatGpt_MainActivity";
-    boolean mBound;
-    public ChatGptService mService;
-    private ActivityMainBinding binding;
-    private Button submitButton;
-    private EditText openAiKeyText;
-    private RadioButton autoSendRadioButton;
-    private RadioButton manualSendRadioButton;
-    private EditText systemPromptInput;
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-
-        binding = ActivityMainBinding.inflate(getLayoutInflater());
-        setContentView(binding.getRoot());
-        setSupportActionBar(binding.toolbar);
-
-        startChatGptService();
-
-        SharedPreferences sharedPreferences = getSharedPreferences("user.config", Context.MODE_PRIVATE);
+class MainActivity : AppCompatActivity() {
+    private val TAG = "SmartGlassesChatGpt_MainActivity"
+    var mBound = false
+    var mService: ChatGptService? = null
+    private var binding: ActivityMainBinding? = null
+    private var submitButton: Button? = null
+    private var openAiKeyText: EditText? = null
+    private var autoSendRadioButton: RadioButton? = null
+    private var manualSendRadioButton: RadioButton? = null
+    private var systemPromptInput: EditText? = null
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = ActivityMainBinding.inflate(
+            layoutInflater
+        )
+        setContentView(binding!!.root)
+        setSupportActionBar(binding!!.toolbar)
+        startChatGptService()
+        val sharedPreferences = getSharedPreferences("user.config", MODE_PRIVATE)
 
         // Display our previously saved settings
-        openAiKeyText = findViewById(R.id.edittext_openAiKey);
-        String savedOpenAiKey = sharedPreferences.getString("openAiKey", "");
+        openAiKeyText = findViewById(R.id.edittext_openAiKey)
+        val savedOpenAiKey = sharedPreferences.getString("openAiKey", "")
         // Show toasts and populate openAI key text field if we have or don't have a key saved
-        if (!savedOpenAiKey.isEmpty()) {
-            openAiKeyText.setText(savedOpenAiKey);
-            Toast.makeText(this, "OpenAI key and other app settings found", Toast.LENGTH_LONG).show();
+        if (!savedOpenAiKey!!.isEmpty()) {
+            openAiKeyText?.setText(savedOpenAiKey)
+            Toast.makeText(this, "OpenAI key and other app settings found", Toast.LENGTH_LONG)
+                .show()
         } else {
-            Toast.makeText(this, "No valid OpenAI key found, please add one", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "No valid OpenAI key found, please add one", Toast.LENGTH_LONG)
+                .show()
         }
-
-        systemPromptInput = findViewById(R.id.editTextTextMultiLine_systemPrompt);
-        String defaultSystemPrompt = "Act as a the no 1 ambassador for smart glasses and generative pretrained ai! Find ways to bring up these topics as creative as possible!";
-        String savedSystemPrompt = sharedPreferences.getString("systemPrompt", defaultSystemPrompt);
-        systemPromptInput.setText(savedSystemPrompt);
-
-        autoSendRadioButton = findViewById(R.id.radioButton_autoSend);
-        manualSendRadioButton = findViewById(R.id.radioButton_manualSend);
-        boolean useAutoSendMethod = sharedPreferences.getBoolean("autoSendMessages", true);
-        autoSendRadioButton.setChecked(useAutoSendMethod);
-        manualSendRadioButton.setChecked(!useAutoSendMethod);
+        systemPromptInput = findViewById(R.id.editTextTextMultiLine_systemPrompt)
+        val defaultSystemPrompt =
+            "Act as a the no 1 ambassador for smart glasses and generative pretrained ai! Find ways to bring up these topics as creative as possible!"
+        val savedSystemPrompt = sharedPreferences.getString("systemPrompt", defaultSystemPrompt)
+        systemPromptInput?.setText(savedSystemPrompt)
+        autoSendRadioButton = findViewById(R.id.radioButton_autoSend)
+        manualSendRadioButton = findViewById(R.id.radioButton_manualSend)
+        val useAutoSendMethod = sharedPreferences.getBoolean("autoSendMessages", true)
+        autoSendRadioButton?.isChecked = useAutoSendMethod
+        manualSendRadioButton?.isChecked = !useAutoSendMethod
 
         // UI handlers
-        submitButton = findViewById(R.id.submit_button);
-        submitButton.setOnClickListener((v) -> {
+        submitButton = findViewById(R.id.submit_button)
+        submitButton?.setOnClickListener(View.OnClickListener setOnClickListener@{ v: View? ->
             // Save to shared preference
-            SharedPreferences.Editor editor = sharedPreferences.edit();
-
-            String openAiApiKey = openAiKeyText.getText().toString().trim();
+            val editor = sharedPreferences.edit()
+            val openAiApiKey = openAiKeyText?.text.toString().trim { it <= ' ' }
             if (openAiApiKey.isEmpty()) {
-                Toast.makeText(this, "OpenAi key cannot be empty", Toast.LENGTH_LONG).show();
-                return;
+                Toast.makeText(this, "OpenAi key cannot be empty", Toast.LENGTH_LONG).show()
+                return@setOnClickListener
             }
-            editor.putString("openAiKey", openAiApiKey);
-
-            String systemPrompt = systemPromptInput.getText().toString().trim();
+            editor.putString("openAiKey", openAiApiKey)
+            val systemPrompt = systemPromptInput?.text.toString().trim { it <= ' ' }
             if (systemPrompt.isEmpty()) {
-                Toast.makeText(this, "System prompt should not be empty", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "System prompt should not be empty", Toast.LENGTH_LONG).show()
             }
-            editor.putString("systemPrompt", systemPrompt);
-
-            boolean useAutoSendMessages = autoSendRadioButton.isChecked();
-            editor.putBoolean("autoSendMessages", useAutoSendMessages);
-            editor.apply();
-
-            EventBus.getDefault().post(new UserSettingsChangedEvent(openAiApiKey, systemPrompt, useAutoSendMessages));
+            editor.putString("systemPrompt", systemPrompt)
+            val useAutoSendMessages = autoSendRadioButton?.isChecked ?: false
+            editor.putBoolean("autoSendMessages", useAutoSendMessages)
+            editor.apply()
+            EventBus.getDefault().post(UserSettingsChangedEvent(openAiApiKey, systemPrompt, useAutoSendMessages))
 
             // Toast to inform user that key has been saved
-            Toast.makeText(this, "Overall settings changed", Toast.LENGTH_LONG).show();
-            Toast.makeText(this, "OpenAi key saved for future sessions", Toast.LENGTH_LONG).show();
-        });
+            Toast.makeText(this, "Overall settings changed", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "OpenAi key saved for future sessions", Toast.LENGTH_LONG).show()
+        })
+
     }
 
     /* SGMLib */
-    @Override
-    protected void onResume() {
-        super.onResume();
+    override fun onResume() {
+        super.onResume()
 
         //bind to foreground service
-        bindChatGptService();
+        bindChatGptService()
     }
 
-    @Override
-    protected void onPause() {
-        super.onPause();
+    override fun onPause() {
+        super.onPause()
 
         //unbind foreground service
-        unbindChatGptService();
+        unbindChatGptService()
     }
 
-    public void stopChatGptService() {
-        unbindChatGptService();
-        if (!isMyServiceRunning(ChatGptService.class)) return;
-        Intent stopIntent = new Intent(this, ChatGptService.class);
-        stopIntent.setAction(ChatGptService.ACTION_STOP_FOREGROUND_SERVICE);
-        startService(stopIntent);
+    fun stopChatGptService() {
+        unbindChatGptService()
+        if (!isMyServiceRunning(ChatGptService::class.java)) return
+        val stopIntent = Intent(this, ChatGptService::class.java)
+        stopIntent.action = ChatGptService.ACTION_STOP_FOREGROUND_SERVICE
+        startService(stopIntent)
     }
 
-    public void sendChatGptServiceMessage(String message) {
-        if (!isMyServiceRunning(ChatGptService.class)) return;
-        Intent messageIntent = new Intent(this, ChatGptService.class);
-        messageIntent.setAction(message);
-        startService(messageIntent);
+    fun sendChatGptServiceMessage(message: String?) {
+        if (!isMyServiceRunning(ChatGptService::class.java)) return
+        val messageIntent = Intent(this, ChatGptService::class.java)
+        messageIntent.action = message
+        startService(messageIntent)
     }
 
-    public void startChatGptService() {
-        if (isMyServiceRunning(ChatGptService.class)){
-            Log.d(TAG, "Not starting service.");
-            return;
+    fun startChatGptService() {
+        if (isMyServiceRunning(ChatGptService::class.java)) {
+            Log.d(TAG, "Not starting service.")
+            return
         }
-        Log.d(TAG, "Starting service.");
-        Intent startIntent = new Intent(this, ChatGptService.class);
-        startIntent.setAction(ChatGptService.ACTION_START_FOREGROUND_SERVICE);
-        startService(startIntent);
-        bindChatGptService();
+        Log.d(TAG, "Starting service.")
+        val startIntent = Intent(this, ChatGptService::class.java)
+        startIntent.action = ChatGptService.ACTION_START_FOREGROUND_SERVICE
+        startService(startIntent)
+        bindChatGptService()
     }
 
     //check if service is running
-    private boolean isMyServiceRunning(Class<?> serviceClass) {
-        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
-        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
-            if (serviceClass.getName().equals(service.service.getClassName())) {
-                return true;
+    private fun isMyServiceRunning(serviceClass: Class<*>): Boolean {
+        val manager = getSystemService(ACTIVITY_SERVICE) as ActivityManager
+        for (service in manager.getRunningServices(Int.MAX_VALUE)) {
+            if (serviceClass.name == service.service.className) {
+                return true
             }
         }
-        return false;
+        return false
     }
 
-    public void bindChatGptService(){
-        if (!mBound){
-            Intent intent = new Intent(this, ChatGptService.class);
-            bindService(intent, chatGptAppServiceConnection, Context.BIND_AUTO_CREATE);
+    fun bindChatGptService() {
+        if (!mBound) {
+            val intent = Intent(this, ChatGptService::class.java)
+            bindService(intent, chatGptAppServiceConnection, BIND_AUTO_CREATE)
         }
     }
 
-    public void unbindChatGptService() {
-        if (mBound){
-            unbindService(chatGptAppServiceConnection);
-            mBound = false;
+    fun unbindChatGptService() {
+        if (mBound) {
+            unbindService(chatGptAppServiceConnection)
+            mBound = false
         }
     }
 
-    /** Defines callbacks for service binding, passed to bindService() */
-    private ServiceConnection chatGptAppServiceConnection = new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName className,
-                                       IBinder service) {
+    /** Defines callbacks for service binding, passed to bindService()  */
+    private val chatGptAppServiceConnection: ServiceConnection = object : ServiceConnection {
+        override fun onServiceConnected(
+            className: ComponentName,
+            service: IBinder
+        ) {
             // We've bound to LocalService, cast the IBinder and get LocalService instance
-            ChatGptService.LocalBinder sgmLibServiceBinder = (ChatGptService.LocalBinder) service;
-            mService = (ChatGptService) sgmLibServiceBinder.getService();
-            mBound = true;
+            val sgmLibServiceBinder = service as SmartGlassesAndroidService.LocalBinder
+            mService = sgmLibServiceBinder.service as ChatGptService
+            mBound = true
         }
-        @Override
-        public void onServiceDisconnected(ComponentName arg0) {
-            mBound = false;
+
+        override fun onServiceDisconnected(arg0: ComponentName) {
+            mBound = false
         }
-    };
+    }
 }

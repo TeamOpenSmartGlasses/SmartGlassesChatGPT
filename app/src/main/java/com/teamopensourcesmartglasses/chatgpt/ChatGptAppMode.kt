@@ -1,9 +1,5 @@
-package com.teamopensourcesmartglasses.chatgpt;
+package com.teamopensourcesmartglasses.chatgpt
 
-public enum ChatGptAppMode {
-    Conversation,
-    Question,
-    Record,
-    Summarize,
-    Inactive
+enum class ChatGptAppMode {
+    Conversation, Question, Record, Summarize, Inactive
 }
