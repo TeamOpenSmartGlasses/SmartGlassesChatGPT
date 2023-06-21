@@ -1,4 +1,4 @@
-package com.teamopensourcesmartglasses.chatgpt.UI
+package com.teamopensourcesmartglasses.chatgpt.ui
 
 import android.os.Bundle
 import android.view.LayoutInflater

@@ -13,7 +13,7 @@ import android.widget.EditText
 import android.widget.RadioButton
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.teamopensourcesmartglasses.chatgpt.ChatGptService
+import com.teamopensmartglasses.sgmlib.SmartGlassesAndroidService
 import com.teamopensourcesmartglasses.chatgpt.databinding.ActivityMainBinding
 import com.teamopensourcesmartglasses.chatgpt.events.UserSettingsChangedEvent
 import org.greenrobot.eventbus.EventBus

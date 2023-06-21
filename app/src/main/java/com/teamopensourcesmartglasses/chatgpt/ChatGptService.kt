@@ -1,12 +1,12 @@
 package com.teamopensourcesmartglasses.chatgpt
 
-import android.os.Binder
 import android.util.Log
 import com.google.android.material.R
 import com.teamopensmartglasses.sgmlib.DataStreamType
 import com.teamopensmartglasses.sgmlib.FocusStates
 import com.teamopensmartglasses.sgmlib.SGMCommand
 import com.teamopensmartglasses.sgmlib.SGMLib
+import com.teamopensmartglasses.sgmlib.SmartGlassesAndroidService
 import com.teamopensourcesmartglasses.chatgpt.events.ChatErrorEvent
 import com.teamopensourcesmartglasses.chatgpt.events.ChatReceivedEvent
 import com.teamopensourcesmartglasses.chatgpt.events.ChatSummarizedEvent
