@@ -14,7 +14,7 @@
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="730dp"
-            tools:context=".UI.ChatGptSetupFragment">
+            tools:context=".ui.ChatGptSetupFragment">
 
             <TextView
                 android:id="@+id/textView"
